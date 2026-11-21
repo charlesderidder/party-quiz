@@ -1,0 +1,24 @@
+{
+  "title": {
+    "nl": "Speler !{{staat|staat niet}} op de 1e plek",
+    "en": "Player !{{is|is not}} in 1st place"
+  },
+  "titleFormatted": {
+    "nl": "Speler [[player]] !{{staat|staat niet}} op de 1e plek",
+    "en": "Player [[player]] !{{is|is not}} in 1st place"
+  },
+  "args": [
+    {
+      "name": "player",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Speler",
+        "en": "Player"
+      },
+      "placeholder": {
+        "nl": "Kies speler of gebruik trigger-context",
+        "en": "Select player or use trigger context"
+      }
+    }
+  ]
+}

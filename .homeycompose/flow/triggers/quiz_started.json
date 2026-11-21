@@ -1,0 +1,21 @@
+{
+  "title": {
+    "nl": "Een nieuwe quiz start",
+    "en": "A new quiz starts"
+  },
+  "hint": {
+    "nl": "Triggert zodra de host of een Flow een nieuwe quiz start.",
+    "en": "Triggers when the host or a Flow starts a new quiz."
+  },
+  "tokens": [
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": {
+        "nl": "Quiz naam",
+        "en": "Quiz name"
+      },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

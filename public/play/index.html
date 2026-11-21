@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Homey Party Quiz — Speler</title>
+  <link rel="stylesheet" href="/css/homey-style.css" />
+  <style>
+    .play-shell {
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .player-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .avatar-picker, .color-picker {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .avatar-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: 2px solid transparent;
+      background: var(--surface-subtle);
+      font-size: 22px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s ease, border-color 0.15s ease;
+    }
+
+    .avatar-btn.selected {
+      border-color: var(--homey-blue);
+      background: rgba(0, 164, 232, 0.12);
+      transform: scale(1.06);
+    }
+
+    .color-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 3px solid transparent;
+      cursor: pointer;
+    }
+
+    .color-btn.selected {
+      border-color: #0F172A;
+      transform: scale(1.08);
+    }
+
+    /* Mobile Homey Answer Tiles */
+    .mobile-answer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .mobile-tile {
+      min-height: 132px;
+      border-radius: 24px;
+      border: none;
+      color: #fff;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 17px;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.12s ease, filter 0.15s ease, opacity 0.2s ease;
+    }
+
+    .mobile-tile:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .mobile-tile.selected-choice {
+      outline: 4px solid #0F172A;
+      transform: scale(1.02);
+    }
+
+    .result-badge-big {
+      width: 78px;
+      height: 78px;
+      border-radius: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin: 0 auto 12px;
+      box-shadow: var(--shadow-soft);
+    }
+  </style>
+</head>
+<body>
+  <!-- Live Push Notification Toast Banner -->
+  <div id="pushBanner" class="push-toast-banner">
+    <div style="font-size: 24px;">🔔</div>
+    <div style="flex: 1;">
+      <div id="pushBannerTitle" style="font-weight: 800; font-size: 14px;">Homey Web Push</div>
+      <div id="pushBannerBody" style="font-size: 12.5px; opacity: 0.9; margin-top: 3px; white-space: pre-line;"></div>
+    </div>
+  </div>
+
+  <div class="play-shell">
+    <!-- Top Status Header -->
+    <header class="glass-card player-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div id="headerAvatar" class="homey-orb" style="width: 38px; height: 38px; font-size: 18px;">🎉</div>
+        <div>
+          <div id="headerPlayerName" style="font-weight: 800; font-size: 15px;">Welkom bij Party Quiz</div>
+          <div id="headerPushStatus" style="font-size: 11.5px; color: var(--text-muted);">Kies je naam om mee te doen</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="headerRankBadge" class="glass-pill" style="display: none;">#1</div>
+        <div id="headerScoreBadge" class="glass-pill" style="color: var(--homey-blue); display: none;">0 pt</div>
+      </div>
+    </header>
+
+    <!-- 1. JOIN / LOGIN SCREEN -->
+    <section id="screenJoin" class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+      <div>
+        <span class="glass-pill" style="color: var(--homey-blue); margin-bottom: 8px;">📱 Doe mee met de Quiz</span>
+        <h1 style="font-size: 24px; font-weight: 900;">Kies je spelersprofiel</h1>
+        <p style="font-size: 13.5px; color: var(--text-muted); margin-top: 4px;">
+          Je sessie wordt automatisch bewaard — zelfs als je per ongeluk je browser ververst!
+        </p>
+      </div>
+
+      <div>
+        <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px;">Jouw Naam</label>
+        <input id="inputPlayerName" type="text" class="input-homey" placeholder="Bijv. Sophie" maxlength="22" autocomplete="off" />
+      </div>
+
+      <div>
+        <label style="font-size: 13px; font-weight: 700; display: block;">Kies een Avatar</label>
+        <div class="avatar-picker" id="avatarPicker"></div>
+      </div>
+
+      <div>
+        <label style="font-size: 13px; font-weight: 700; display: block;">Kies je Homey-tegelkleur</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+
+      <div style="background: var(--surface-subtle); padding: 14px; border-radius: 16px; border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <div>
+          <div style="font-weight: 800; font-size: 13.5px;">🔔 Web Push Notificaties</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Ontvang na elke vraag direct je score, positie &amp; de Top 3</div>
+        </div>
+        <input type="checkbox" id="chkEnablePush" checked style="width: 22px; height: 22px; accent-color: var(--homey-blue);" />
+      </div>
+
+      <button id="btnJoinGame" class="btn-homey btn-primary btn-lg" style="width: 100%;">🚀 Neem deel aan Quiz</button>
+    </section>
+
+    <!-- 2. WAITING IN LOBBY SCREEN -->
+    <section id="screenLobbyWait" class="glass-card" style="padding: 28px 22px; text-align: center; display: none; flex-direction: column; gap: 16px;">
+      <div style="font-size: 48px;">🎉</div>
+      <h2 style="font-size: 22px; font-weight: 900;">Je zit in de lobby!</h2>
+      <p style="font-size: 14px; color: var(--text-muted);">
+        Kijk naar het hoofdscherm (<strong id="lobbyQuizNameText">Homey Party Quiz</strong>). Zodra de host start, verschijnen hier direct de 4 antwoordtegels!
+      </p>
+
+      <div style="background: var(--surface-subtle); border-radius: 16px; padding: 14px; font-size: 13px; color: var(--text-muted);">
+        ⚡ <strong>Snelheidsbonus tip:</strong> Antwoord in de <strong>1e seconde</strong> voor de volle <strong>1000 punten</strong>! Vanaf seconde 2 t/m 20 loopt de score af naar 0.
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 6px;">
+        <button id="btnRequestPushAgain" class="btn-homey btn-sm">🔔 Test / Activeer Web Push</button>
+        <button id="btnEditProfile" class="btn-homey btn-sm">✏️ Wijzig naam</button>
+      </div>
+    </section>
+
+    <!-- 3. ACTIVE QUESTION GAMEPLAY SCREEN -->
+    <section id="screenGameplay" style="display: none; flex-direction: column; gap: 14px; flex: 1;">
+      <div class="glass-card" style="padding: 16px 18px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <span class="glass-pill" id="playQuestionCounter" style="font-size: 12px;">Vraag 1</span>
+          <span class="glass-pill" style="color: var(--homey-amber); font-weight: 900;">
+            ⚡ <span id="playAvailablePoints">1000</span> pt
+          </span>
+          <span class="glass-pill" style="color: var(--homey-blue); font-weight: 900;">
+            ⏱️ <span id="playRemainingSec">20</span>s
+          </span>
+        </div>
+        <div id="playQuestionText" style="font-weight: 800; font-size: 17px; line-height: 1.35;"></div>
+      </div>
+
+      <!-- 4 Homey Tile Answer Buttons -->
+      <div id="playButtonsGrid" class="mobile-answer-grid"></div>
+
+      <!-- Locked-in Answer Feedback Box -->
+      <div id="lockedAnswerCard" class="glass-card" style="padding: 22px; text-align: center; display: none;">
+        <div style="font-size: 34px; margin-bottom: 6px;">🔒⚡</div>
+        <div style="font-weight: 900; font-size: 18px;" id="lockedTitle">Antwoord verzonden!</div>
+        <div style="font-size: 13.5px; color: var(--text-muted); margin-top: 4px;" id="lockedSub">
+          Wachten tot de ronde klaar is voor je score &amp; positie...
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. POST-ROUND FEEDBACK SCREEN -->
+    <section id="screenRoundResult" class="glass-card" style="padding: 26px 20px; text-align: center; display: none; flex-direction: column; gap: 16px;">
+      <div id="resultIconBadge" class="result-badge-big">✅</div>
+      <div>
+        <h2 id="resultHeadline" style="font-size: 24px; font-weight: 900;">Goed geantwoord!</h2>
+        <p id="resultPointsEarned" style="font-size: 18px; font-weight: 800; color: var(--homey-green); margin-top: 4px;">+950 punten</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="background: var(--surface-subtle); padding: 14px; border-radius: 18px;">
+          <div style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Jouw Positie</div>
+          <div style="font-size: 24px; font-weight: 900; margin-top: 4px;" id="resultRankValue">#1</div>
+          <div id="resultRankDelta" style="margin-top: 4px;"></div>
+        </div>
+        <div style="background: var(--surface-subtle); padding: 14px; border-radius: 18px;">
+          <div style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Achterstand op #1</div>
+          <div style="font-size: 20px; font-weight: 900; margin-top: 6px; color: var(--homey-blue);" id="resultGapToFirst">Koploper! 🥇</div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;" id="resultTotalScore">Totaal: 0 pt</div>
+        </div>
+      </div>
+
+      <div style="text-align: left; background: var(--surface-subtle); padding: 14px 16px; border-radius: 18px;">
+        <div style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
+          🏆 Huidige Top 3
+        </div>
+        <div id="resultTop3List" style="display: flex; flex-direction: column; gap: 6px; font-size: 13.5px;"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/play/play.js"></script>
+</body>
+</html>

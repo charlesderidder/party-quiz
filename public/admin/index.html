@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homey Party Quiz — Beheer &amp; Quiz Editor</title>
+  <link rel="stylesheet" href="/css/homey-style.css" />
+  <style>
+    .admin-shell {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 10px 24px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 8px;
+      border-radius: 20px;
+    }
+
+    .tab-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 800;
+      font-size: 14px;
+      padding: 11px 18px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--homey-blue), var(--homey-indigo));
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(0, 164, 232, 0.28);
+    }
+
+    /* Editor Split */
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .quiz-list-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--surface-subtle);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .quiz-list-item.active {
+      border-color: var(--homey-blue);
+      background: var(--surface-glass-strong);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .question-card {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .options-editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .option-input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-glass-strong);
+      padding: 8px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .option-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      color: #fff;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .https-notice {
+      background: linear-gradient(135deg, rgba(0, 164, 232, 0.12), rgba(99, 102, 241, 0.12));
+      border: 1px solid rgba(0, 164, 232, 0.35);
+      border-radius: 20px;
+      padding: 20px;
+    }
+
+    .flow-log-item {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 960px) {
+      .editor-grid, .options-editor-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="homey-topbar">
+    <a href="/" class="homey-logo-group">
+      <div class="homey-orb">⚙️</div>
+      <div>
+        <div style="font-weight: 800; font-size: 18px;">Homey Party Quiz — Beheer &amp; Quiz Editor</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Homey App Settings • CRUD Editor • Excel/CSV/JSON Import • VAPID &amp; Flows</div>
+      </div>
+    </a>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="/host" class="btn-homey btn-sm">📺 Open Host (/host)</a>
+      <a href="/play" target="_blank" class="btn-homey btn-sm">📱 Open Speler (/play)</a>
+      <a href="/widget" target="_blank" class="btn-homey btn-sm">📊 Open Widget (/widget)</a>
+    </div>
+  </header>
+
+  <main class="admin-shell">
+    <!-- Tab Navigation -->
+    <nav class="glass-card tab-nav">
+      <button class="tab-btn active" data-tab="tabEditor">📝 Quiz Editor (CRUD)</button>
+      <button class="tab-btn" data-tab="tabImport">📥 Import (.xlsx, .csv, .json)</button>
+      <button class="tab-btn" data-tab="tabSettings">🔒 HTTPS, Reverse Proxy &amp; Web Push (VAPID)</button>
+      <button class="tab-btn" data-tab="tabFlows">⚡ Homey Flows (ALS / EN / DAN Studio)</button>
+    </nav>
+
+    <!-- Status Notification Banner -->
+    <div id="adminStatusAlert" class="glass-card" style="padding: 14px 20px; display: none; font-weight: 700; color: var(--homey-green);"></div>
+
+    <!-- TAB 1: CRUD QUIZ EDITOR -->
+    <section id="tabEditor" class="editor-grid">
+      <aside class="glass-card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="font-size: 16px; font-weight: 800;">Opgeslagen Quizzen</h3>
+          <button id="btnNewQuiz" class="btn-homey btn-primary btn-sm">+ Nieuw</button>
+        </div>
+        <div id="quizSidebarList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+      </aside>
+
+      <div class="glass-card" style="padding: 26px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
+          <div>
+            <h2 style="font-size: 22px; font-weight: 900;">Quiz Bewerken</h2>
+            <p style="font-size: 13px; color: var(--text-muted);">
+              Standaard 1000 pt in seconde 1, daarna vanaf seconde 2 t/m 20 aflopend naar 0.
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="btnActivateInLobby" class="btn-homey">📺 Zet klaar in Host Lobby</button>
+            <button id="btnDeleteQuiz" class="btn-homey btn-danger">🗑️ Verwijder</button>
+            <button id="btnSaveQuiz" class="btn-homey btn-primary">💾 Quiz Opslaan</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div>
+            <label style="font-size: 12.5px; font-weight: 700; display: block; margin-bottom: 6px;">Quiz Titel</label>
+            <input id="editQuizTitle" type="text" class="input-homey" placeholder="Bijv. Vrijdagavond Borrel Quiz" />
+          </div>
+          <div>
+            <label style="font-size: 12.5px; font-weight: 700; display: block; margin-bottom: 6px;">Omschrijving</label>
+            <input id="editQuizDesc" type="text" class="input-homey" placeholder="Korte beschrijving voor op het hoofdscherm" />
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="font-size: 17px; font-weight: 800;">Vragen (<span id="editQuestionCount">0</span>)</h3>
+          <button id="btnAddQuestion" class="btn-homey btn-primary btn-sm">+ Vraag Toevoegen</button>
+        </div>
+
+        <div id="questionsEditorContainer" style="display: flex; flex-direction: column; gap: 16px;"></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: IMPORT (.XLSX, .CSV, .JSON) -->
+    <section id="tabImport" class="glass-card" style="padding: 28px; display: none; flex-direction: column; gap: 22px;">
+      <div>
+        <span class="glass-pill" style="color: var(--homey-blue); margin-bottom: 8px;">📥 Bulk Quiz Importeren</span>
+        <h2 style="font-size: 24px; font-weight: 900;">Upload een Quiz via Excel (.xlsx), CSV of JSON</h2>
+        <p style="font-size: 14px; color: var(--text-muted); margin-top: 4px;">
+          Download eerst een van de voorbeeldbestanden hieronder, vul je eigen vragen in en upload het bestand direct in Homey Party Quiz.
+        </p>
+      </div>
+
+      <!-- Download Sample Buttons -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="/api/samples/xlsx" download class="btn-homey">📊 Download Voorbeeld .XLSX (Excel)</a>
+        <a href="/api/samples/csv" download class="btn-homey">📄 Download Voorbeeld .CSV</a>
+        <a href="/api/samples/json" download class="btn-homey">🧩 Download Voorbeeld .JSON</a>
+      </div>
+
+      <form id="importForm" style="background: var(--surface-subtle); border: 2px dashed var(--border-subtle); border-radius: 22px; padding: 28px; display: flex; flex-direction: column; gap: 16px; max-width: 680px;">
+        <div>
+          <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px;">Optionele Quiz Naam (laat leeg om bestandsnaam te gebruiken)</label>
+          <input type="text" id="importCustomTitle" class="input-homey" placeholder="Bijv. Kerst Familie Quiz 2026" />
+        </div>
+
+        <div>
+          <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px;">Selecteer bestand (.xlsx, .csv of .json)</label>
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv,.json" class="input-homey" required />
+        </div>
+
+        <button type="submit" class="btn-homey btn-primary btn-lg">🚀 Bestand Uploaden &amp; Importeren</button>
+      </form>
+
+      <div style="background: var(--surface-subtle); padding: 18px; border-radius: 18px; font-size: 13px; line-height: 1.6;">
+        <strong>Ondersteunde kolomnamen in Excel (.xlsx) &amp; CSV:</strong><br />
+        <code>vraag</code> | <code>optie_1</code> | <code>optie_2</code> | <code>optie_3</code> | <code>optie_4</code> | <code>juist_antwoord</code> (1 t/m 4 of A t/m D) | <code>tijdslimiet</code> (standaard 20 sec) | <code>punten</code> (standaard 1000)
+      </div>
+    </section>
+
+    <!-- TAB 3: HTTPS / REVERSE PROXY & VAPID WEB PUSH SETTINGS -->
+    <section id="tabSettings" class="glass-card" style="padding: 28px; display: none; flex-direction: column; gap: 22px;">
+      <div class="https-notice">
+        <h3 style="font-size: 18px; font-weight: 900; display: flex; align-items: center; gap: 8px;">
+          🔒 Belangrijk voor Web Push op Mobiele Browsers (HTTPS / Reverse Proxy)
+        </h3>
+        <p style="font-size: 13.5px; line-height: 1.55; margin-top: 8px;">
+          Moderne mobiele browsers (iOS Safari, Android Chrome) staan Service Workers en de <strong>Web Push API (VAPID)</strong> uitsluitend toe over een beveiligde <strong>HTTPS-verbinding</strong> (of via <code>localhost</code>).
+          Draai je Homey Self-Hosted Server (SHS) op Proxmox, Docker of een Synology NAS? Stel dan een Reverse Proxy in (bijv. via <em>Nginx Proxy Manager</em>, <em>Caddy</em> of <em>Synology Application Portal</em> met een Let's Encrypt certificaat) die verwijst naar deze Homey-app poort, en vul de HTTPS-URL hieronder in. De QR-code op <code>/host</code> gebruikt deze URL dan automatisch!
+        </p>
+        <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 6px;">
+          💡 <em>Fallback ingebouwd:</em> Zelfs zonder HTTPS toont Homey Party Quiz automatisch een realtime in-app Push-notificatiebanner via Socket.io op het scherm van de speler!
+        </p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+        <div>
+          <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px;">
+            Externe Server / Reverse Proxy URL (voor QR-code &amp; Web Push)
+          </label>
+          <input type="text" id="settingPublicUrl" class="input-homey" placeholder="Bijv. https://quiz.mijnhomey.nl (laat leeg voor automatische detectie)" />
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            Gedetecteerd lokaal IP op SHS: <code id="detectedLanIpText">...</code>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px;">
+            VAPID Contact Subject (mailto: of https:)
+          </label>
+          <input type="text" id="settingVapidSubject" class="input-homey" placeholder="mailto:partyquiz@homey.local" />
+        </div>
+      </div>
+
+      <div style="background: var(--surface-subtle); padding: 18px; border-radius: 18px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-weight: 800; font-size: 14px;">🔑 Automatisch Gegenereerde VAPID Public Key (Homey.settings)</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Geregistreerde Web Push toestellen: <strong id="subCountText">0</strong></div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnTestPushAll" class="btn-homey btn-sm">🔔 Stuur Test Web Push naar Spelers</button>
+            <button id="btnRegenVapid" class="btn-homey btn-danger btn-sm">🔄 Genereer Nieuwe VAPID-keys</button>
+          </div>
+        </div>
+        <input type="text" id="vapidPublicKeyInput" class="input-homey" readonly style="font-family: monospace; font-size: 12.5px;" />
+      </div>
+
+      <div>
+        <button id="btnSaveSettings" class="btn-homey btn-primary btn-lg">💾 Server &amp; HTTPS Instellingen Opslaan</button>
+      </div>
+    </section>
+
+    <!-- TAB 4: HOMEY FLOW STUDIO & MONITOR -->
+    <section id="tabFlows" style="display: none; flex-direction: column; gap: 22px;">
+      <div class="editor-grid" style="grid-template-columns: 1fr 1fr;">
+        <!-- DAN Actions & EN Conditions Tester -->
+        <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+          <div>
+            <span class="glass-pill" style="color: var(--homey-blue); margin-bottom: 6px;">⚡ DAN-Kaarten &amp; EN-Kaarten</span>
+            <h3 style="font-size: 20px; font-weight: 900;">Test Homey Flow Acties &amp; Condities</h3>
+          </div>
+
+          <div style="background: var(--surface-subtle); padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-weight: 800; font-size: 14px;">DAN: Geef [speler] [aantal] bonuspunten (<code>give_bonus_points</code>)</div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="flowBonusPlayer" class="input-homey" placeholder="Spelernaam (bijv. Sophie)" />
+              <input type="number" id="flowBonusPoints" class="input-homey" value="250" style="max-width: 120px;" />
+              <button id="btnRunBonusFlow" class="btn-homey btn-primary">Voer uit</button>
+            </div>
+          </div>
+
+          <div style="background: var(--surface-subtle); padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-weight: 800; font-size: 14px;">DAN: Verstuur Web Push naar alle spelers (<code>send_push_all</code>)</div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="flowPushAllText" class="input-homey" value="De lichten in de woonkamer knipperen voor de leider!" />
+              <button id="btnRunPushAllFlow" class="btn-homey btn-primary">Verstuur</button>
+            </div>
+          </div>
+
+          <div style="background: var(--surface-subtle); padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-weight: 800; font-size: 14px;">EN: Controleer Flow-conditie voor een speler</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <select id="flowConditionSelect" class="input-homey" style="flex: 1;">
+                <option value="is_player_first">is_player_first — Staat op de 1e plek</option>
+                <option value="is_player_in_top3">is_player_in_top3 — Zit in de top 3</option>
+                <option value="is_player_outside_top3">is_player_outside_top3 — Valt buiten de top 3</option>
+                <option value="did_player_rank_up">did_player_rank_up — Is gestegen in positie</option>
+                <option value="is_last_answer_correct">is_last_answer_correct — Laatste antwoord was goed</option>
+                <option value="is_last_answer_wrong">is_last_answer_wrong — Laatste antwoord was fout</option>
+                <option value="is_player_winner">is_player_winner — Is de winnaar</option>
+              </select>
+              <input type="text" id="flowConditionPlayer" class="input-homey" placeholder="Spelernaam" style="max-width: 160px;" />
+              <button id="btnEvalCondition" class="btn-homey">Test EN</button>
+            </div>
+            <div id="flowConditionResult" style="font-size: 13px; font-weight: 800;"></div>
+          </div>
+        </div>
+
+        <!-- Live ALS Triggers Log -->
+        <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <span class="glass-pill" style="color: var(--homey-green); margin-bottom: 6px;">🔔 ALS-Kaarten (10 Triggers)</span>
+              <h3 style="font-size: 20px; font-weight: 900;">Live Flow Trigger Logboek</h3>
+            </div>
+          </div>
+          <div id="flowEventsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 440px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "title": {
+    "nl": "Ga naar de volgende vraag",
+    "en": "Go to the next question"
+  },
+  "hint": {
+    "nl": "Schakelt direct door naar de volgende vraag of het tussenstand-podium.",
+    "en": "Advances immediately to the next question or leaderboard podium."
+  }
+}

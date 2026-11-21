@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homey Party Quiz — Overzicht</title>
+  <link rel="stylesheet" href="/css/homey-style.css" />
+  <style>
+    .hub-shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 8px 24px 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+
+    .hero {
+      padding: 40px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .nav-card {
+      padding: 26px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      border: 1px solid var(--border-glass);
+    }
+
+    .nav-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-elevated);
+    }
+
+    .nav-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--homey-blue), var(--homey-indigo));
+      box-shadow: 0 8px 20px rgba(0, 164, 232, 0.3);
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-item {
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    code {
+      background: rgba(148, 163, 184, 0.2);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    pre {
+      background: #0F172A;
+      color: #E2E8F0;
+      padding: 18px;
+      border-radius: 16px;
+      font-size: 12.5px;
+      line-height: 1.7;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--homey-green);
+      margin-right: 7px;
+      animation: pulseDot 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+  </style>
+</head>
+<body>
+  <header class="homey-topbar">
+    <div class="homey-logo-group">
+      <div class="homey-orb">🎉</div>
+      <div>
+        <div style="font-weight: 800; font-size: 18px;">Homey Party Quiz</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Homey SDK v3 • Self-Hosted Server</div>
+      </div>
+    </div>
+    <div class="glass-pill" style="font-size: 12.5px;">
+      <span class="live-dot"></span><strong id="hubPhaseText">Verbinden…</strong>
+    </div>
+  </header>
+
+  <main class="hub-shell">
+    <!-- Hero -->
+    <section class="glass-card hero">
+      <span class="glass-pill" style="align-self: flex-start; color: var(--homey-blue);">
+        ⚡ Realtime Socket.io • Web Push • Homey Flows
+      </span>
+      <h1 style="font-size: clamp(28px, 4vw, 42px); font-weight: 900; letter-spacing: -0.03em; line-height: 1.1;">
+        De complete Kahoot-ervaring<br />in de stijl van Homey
+      </h1>
+      <p style="font-size: 15.5px; color: var(--text-muted); max-width: 720px; line-height: 1.6;">
+        Start een groepsquiz op je TV, laat spelers joinen via een QR-code op hun telefoon en koppel
+        de Homey Flows zodat je lampen groen knipperen bij een goed antwoord. Volledig lokaal op je
+        Self-Hosted Server — geen cloud nodig.
+      </p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px;">
+        <a href="/host" class="btn-homey btn-primary btn-lg">📺 Open Host / TV-scherm</a>
+        <a href="/admin" class="btn-homey btn-lg">⚙️ Beheer &amp; Quiz Editor</a>
+      </div>
+    </section>
+
+    <!-- Navigation Cards -->
+    <div class="feature-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+      <a href="/host" class="glass-card nav-card">
+        <div class="nav-icon" style="background: linear-gradient(135deg, #00A4E8, #6366F1);">📺</div>
+        <h3 style="font-size: 17px; font-weight: 900;">/host — Hoofdscherm</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          QR-lobby, live afteltimer, 4 gekleurde antwoordtegels, geanimeerd Top 3-podium, stijgers
+          &amp; dalers in de ranglijst en Web Audio geluidseffecten.
+        </p>
+      </a>
+
+      <a href="/play" target="_blank" class="glass-card nav-card">
+        <div class="nav-icon" style="background: linear-gradient(135deg, #10B981, #059669);">📱</div>
+        <h3 style="font-size: 17px; font-weight: 900;">/play — Spelersscherm</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          Mobile-first login met avatar &amp; kleur, Web Push-toestemming, 4 Homey antwoordtegels,
+          directe feedback, ranguitslag en sessieherstel via <code>localStorage</code>.
+        </p>
+      </a>
+
+      <a href="/admin" class="glass-card nav-card">
+        <div class="nav-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">⚙️</div>
+        <h3 style="font-size: 17px; font-weight: 900;">/admin — Beheer</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          Volledige CRUD-quizeditor, import van .xlsx / .csv / .json met voorbeeldbestanden,
+          HTTPS reverse-proxy instellingen en een live Flow-trigger logboek.
+        </p>
+      </a>
+
+      <a href="/settings" class="glass-card nav-card">
+        <div class="nav-icon" style="background: linear-gradient(135deg, #8B5CF6, #6366F1);">🎛️</div>
+        <h3 style="font-size: 17px; font-weight: 900;">/settings — App Instellingen</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          Dezelfde instellingen als de Homey App Settings pagina: server-URL, VAPID-sleutels,
+          standaardquiz en geluidsvoorkeur.
+        </p>
+      </a>
+
+      <a href="/widget" class="glass-card nav-card">
+        <div class="nav-icon" style="background: linear-gradient(135deg, #0EA5E9, #14B8A6);">📊</div>
+        <h3 style="font-size: 17px; font-weight: 900;">Dashboard Widget</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          De officiële Homey Dashboard Widget <code>widgets/quiz-status</code>: live vraagnummer,
+          spelersaantal, Top 3 en knoppen voor volgende vraag / hostscherm.
+        </p>
+      </a>
+
+      <a href="/api/state" target="_blank" class="glass-card nav-card">
+        <div class="nav-icon" style="background: linear-gradient(135deg, #64748B, #334155);">🔌</div>
+        <h3 style="font-size: 17px; font-weight: 900;">/api/state — JSON API</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          Bekijk de volledige live gamestate als JSON. Handig voor debugging of eigen integraties
+          met de Homey Flows.
+        </p>
+      </a>
+    </div>
+
+    <!-- Live status -->
+    <section class="glass-card" style="padding: 26px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <h2 style="font-size: 19px; font-weight: 900;">📡 Live status</h2>
+        <span class="glass-pill" style="font-size: 12.5px;" id="hubPlayerCount">0 spelers</span>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <strong>Actieve quiz</strong><br />
+          <span id="hubQuizName" style="color: var(--text-muted);">—</span>
+        </div>
+        <div class="feature-item">
+          <strong>Fase</strong><br />
+          <span id="hubPhaseDetail" style="color: var(--text-muted);">—</span>
+        </div>
+        <div class="feature-item">
+          <strong>Vraag</strong><br />
+          <span id="hubQuestionNum" style="color: var(--text-muted);">—</span>
+        </div>
+        <div class="feature-item">
+          <strong>Koploper</strong><br />
+          <span id="hubLeader" style="color: var(--text-muted);">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scoring rule -->
+    <section class="glass-card" style="padding: 26px; display: flex; flex-direction: column; gap: 14px;">
+      <h2 style="font-size: 19px; font-weight: 900;">⏱️ Puntentelling (vereiste #8)</h2>
+      <div class="feature-grid">
+        <div class="feature-item" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+          <strong>Seconde 0 → 1</strong><br />
+          Altijd de volle <strong>1000 punten</strong> — ongeacht hoe snel binnen de eerste seconde.
+        </div>
+        <div class="feature-item" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+          <strong>Seconde 2 → 20</strong><br />
+          Lineaire afname van <strong>1000 → 0 punten</strong>. Bij 2s ±947 pt, bij 10s ±526 pt, bij 20s 0 pt.
+        </div>
+        <div class="feature-item">
+          <strong>Formule</strong><br />
+          <code>score = round(max × (1 − (t − 1) / (T − 1)))</code> voor <code>t &gt; 1</code>.
+        </div>
+      </div>
+    </section>
+
+    <!-- Install instructions -->
+    <section class="glass-card" style="padding: 26px; display: flex; flex-direction: column; gap: 14px;">
+      <h2 style="font-size: 19px; font-weight: 900;">🚀 Installatie op Homey Self-Hosted Server (SHS)</h2>
+      <pre># 1. Installeer de Homey CLI (eenmalig)
+npm install -g homey
+
+# 2. Log in op je Homey account
+homey login
+
+# 3. Ga naar de app-map en installeer dependencies
+cd homey-party-quiz
+npm install
+
+# 4. Start de app direct op je SHS (dev-modus met live logs)
+homey app run --remote
+
+# 5. Of installeer definitief
+homey app install
+
+# De webserver start automatisch op poort 3456:
+#   http://&lt;SHS-IP&gt;:3456/host     → TV / hoofdscherm
+#   http://&lt;SHS-IP&gt;:3456/play     → spelers (QR)
+#   http://&lt;SHS-IP&gt;:3456/admin    → beheer &amp; editor</pre>
+      <div class="feature-item">
+        <strong>🔒 HTTPS reverse proxy (aanbevolen voor Web Push)</strong><br />
+        Browsers staan Web Push alleen toe via HTTPS. Voeg in Nginx Proxy Manager een proxy host
+        toe: <code>quiz.mijn-domein.nl</code> → <code>http://&lt;SHS-IP&gt;:3456</code> met een
+        Let's Encrypt-certificaat en vul de HTTPS-URL in via <a href="/settings">/settings</a> of
+        <a href="/admin">/admin</a>.
+      </div>
+      <pre>server {
+    listen 443 ssl;
+    server_name quiz.mijn-domein.nl;
+
+    ssl_certificate     /etc/letsencrypt/live/quiz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/quiz/privkey.pem;
+
+    location / {
+        proxy_pass http://192.168.1.50:3456;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</pre>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    'use strict';
+
+    const PHASE_LABELS = {
+      lobby: 'Lobby — wachten op spelers',
+      question: 'Vraag actief',
+      reveal: 'Tussenstand wordt getoond',
+      finished: 'Quiz afgelopen'
+    };
+
+    function renderHub(state) {
+      if (!state) return;
+      document.getElementById('hubPhaseText').textContent = PHASE_LABELS[state.phase] || state.phase;
+      document.getElementById('hubQuizName').textContent = state.quizTitle || '—';
+      document.getElementById('hubPhaseDetail').textContent = PHASE_LABELS[state.phase] || state.phase;
+      document.getElementById('hubQuestionNum').textContent =
+        state.totalQuestions > 0
+          ? `${Math.max(1, state.currentQuestionIndex + 1)} van ${state.totalQuestions}`
+          : '—';
+      document.getElementById('hubPlayerCount').textContent = `${state.totalPlayers || 0} spelers`;
+
+      const leader = (state.leaderboard || [])[0];
+      document.getElementById('hubLeader').textContent = leader
+        ? `${leader.avatar || '🎉'} ${leader.name} — ${leader.score} pt`
+        : 'Nog geen scores';
+    }
+
+    const socket = io();
+    socket.on('quiz_state', renderHub);
+    fetch('/api/state')
+      .then(r => r.json())
+      .then(renderHub)
+      .catch(() => {});
+  </script>
+</body>
+</html>

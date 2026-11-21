@@ -1,0 +1,38 @@
+{
+  "title": {
+    "nl": "Een speler buiten de top 3 valt",
+    "en": "A player falls outside the top 3"
+  },
+  "tokens": [
+    {
+      "name": "speler_naam",
+      "type": "string",
+      "title": { "nl": "Speler naam", "en": "Player name" },
+      "example": "Daan"
+    },
+    {
+      "name": "score",
+      "type": "number",
+      "title": { "nl": "Score", "en": "Score" },
+      "example": 2100
+    },
+    {
+      "name": "positie",
+      "type": "number",
+      "title": { "nl": "Positie", "en": "Position" },
+      "example": 4
+    },
+    {
+      "name": "vorige_positie",
+      "type": "number",
+      "title": { "nl": "Vorige positie", "en": "Previous position" },
+      "example": 3
+    },
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": { "nl": "Quiz naam", "en": "Quiz name" },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

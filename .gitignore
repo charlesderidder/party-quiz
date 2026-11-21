@@ -1,0 +1,6 @@
+node_modules/
+userdata/homey-settings.json
+.env
+.env.*
+!.env.example
+.sudo_as_admin_successful

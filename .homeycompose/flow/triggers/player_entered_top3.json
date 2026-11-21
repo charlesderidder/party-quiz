@@ -1,0 +1,42 @@
+{
+  "title": {
+    "nl": "Een speler in de top 3 zit",
+    "en": "A player is in the top 3"
+  },
+  "hint": {
+    "nl": "Triggert wanneer een speler de top 3 binnenkomt of erin staat na een ronde.",
+    "en": "Triggers when a player enters or is in the top 3 after a round."
+  },
+  "tokens": [
+    {
+      "name": "speler_naam",
+      "type": "string",
+      "title": { "nl": "Speler naam", "en": "Player name" },
+      "example": "Sophie"
+    },
+    {
+      "name": "score",
+      "type": "number",
+      "title": { "nl": "Score", "en": "Score" },
+      "example": 3800
+    },
+    {
+      "name": "positie",
+      "type": "number",
+      "title": { "nl": "Positie", "en": "Position" },
+      "example": 2
+    },
+    {
+      "name": "vorige_positie",
+      "type": "number",
+      "title": { "nl": "Vorige positie", "en": "Previous position" },
+      "example": 4
+    },
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": { "nl": "Quiz naam", "en": "Quiz name" },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "title": {
+    "nl": "Een speler heeft gewonnen",
+    "en": "A player has won the quiz"
+  },
+  "hint": {
+    "nl": "Triggert aan het einde van de quiz voor de winnaar op plek 1.",
+    "en": "Triggers at the end of the quiz for the 1st place winner."
+  },
+  "tokens": [
+    {
+      "name": "speler_naam",
+      "type": "string",
+      "title": { "nl": "Speler naam", "en": "Player name" },
+      "example": "Sophie"
+    },
+    {
+      "name": "score",
+      "type": "number",
+      "title": { "nl": "Score", "en": "Score" },
+      "example": 8950
+    },
+    {
+      "name": "positie",
+      "type": "number",
+      "title": { "nl": "Positie", "en": "Position" },
+      "example": 1
+    },
+    {
+      "name": "vorige_positie",
+      "type": "number",
+      "title": { "nl": "Vorige positie", "en": "Previous position" },
+      "example": 1
+    },
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": { "nl": "Quiz naam", "en": "Quiz name" },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

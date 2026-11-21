@@ -1,0 +1,27 @@
+{
+  "name": "com.homey.partyquiz",
+  "version": "1.0.0",
+  "description": "Homey Party Quiz - Realtime Kahoot-stijl groepsquiz voor Homey Self-Hosted Server (SDK v3)",
+  "main": "app.js",
+  "scripts": {
+    "start": "node standalone-runner.js",
+    "build:manifest": "node scripts/build-manifest.js",
+    "test:e2e": "node scripts/e2e-test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "papaparse": "^5.4.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.5",
+    "web-push": "^3.6.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

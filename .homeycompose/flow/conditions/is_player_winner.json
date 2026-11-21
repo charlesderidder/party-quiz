@@ -1,0 +1,24 @@
+{
+  "title": {
+    "nl": "Speler !{{is|is niet}} de winnaar",
+    "en": "Player !{{is|is not}} the winner"
+  },
+  "titleFormatted": {
+    "nl": "Speler [[player]] !{{is|is niet}} de winnaar",
+    "en": "Player [[player]] !{{is|is not}} the winner"
+  },
+  "args": [
+    {
+      "name": "player",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Speler",
+        "en": "Player"
+      },
+      "placeholder": {
+        "nl": "Kies speler of gebruik trigger-context",
+        "en": "Select player or use trigger context"
+      }
+    }
+  ]
+}

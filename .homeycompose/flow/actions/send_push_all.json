@@ -1,0 +1,24 @@
+{
+  "title": {
+    "nl": "Verstuur web-push notificatie naar alle spelers",
+    "en": "Send web-push notification to all players"
+  },
+  "titleFormatted": {
+    "nl": "Verstuur web-push notificatie naar alle spelers met de tekst [[tekst]]",
+    "en": "Send web-push notification to all players with text [[tekst]]"
+  },
+  "args": [
+    {
+      "name": "tekst",
+      "type": "text",
+      "title": {
+        "nl": "Berichttekst",
+        "en": "Message text"
+      },
+      "placeholder": {
+        "nl": "Bijv. Tijd voor de finale-ronde!",
+        "en": "E.g. Time for the final round!"
+      }
+    }
+  ]
+}

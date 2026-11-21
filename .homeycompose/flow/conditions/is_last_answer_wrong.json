@@ -1,0 +1,24 @@
+{
+  "title": {
+    "nl": "Laatste antwoord van speler !{{was|was niet}} fout",
+    "en": "Last answer of player !{{was|was not}} wrong"
+  },
+  "titleFormatted": {
+    "nl": "Laatste antwoord van [[player]] !{{was|was niet}} fout",
+    "en": "Last answer of [[player]] !{{was|was not}} wrong"
+  },
+  "args": [
+    {
+      "name": "player",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Speler",
+        "en": "Player"
+      },
+      "placeholder": {
+        "nl": "Kies speler of gebruik trigger-context",
+        "en": "Select player or use trigger context"
+      }
+    }
+  ]
+}

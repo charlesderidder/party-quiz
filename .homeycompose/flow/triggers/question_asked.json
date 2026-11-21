@@ -1,0 +1,39 @@
+{
+  "title": {
+    "nl": "Een nieuwe vraag wordt gesteld",
+    "en": "A new question is asked"
+  },
+  "hint": {
+    "nl": "Triggert op het moment dat een nieuwe vraag op het scherm verschijnt.",
+    "en": "Triggers the moment a new question appears on screen."
+  },
+  "tokens": [
+    {
+      "name": "vraag_tekst",
+      "type": "string",
+      "title": {
+        "nl": "Vraag tekst",
+        "en": "Question text"
+      },
+      "example": "In welk jaar werd Homey geïntroduceerd?"
+    },
+    {
+      "name": "vraag_nummer",
+      "type": "number",
+      "title": {
+        "nl": "Vraag nummer",
+        "en": "Question number"
+      },
+      "example": 1
+    },
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": {
+        "nl": "Quiz naam",
+        "en": "Quiz name"
+      },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

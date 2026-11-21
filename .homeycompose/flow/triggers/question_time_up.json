@@ -1,0 +1,39 @@
+{
+  "title": {
+    "nl": "De tijd voor een vraag voorbij is",
+    "en": "Time for a question is up"
+  },
+  "hint": {
+    "nl": "Triggert wanneer de afteltimer op 0 staat of iedereen heeft geantwoord.",
+    "en": "Triggers when the countdown timer reaches 0 or all players have answered."
+  },
+  "tokens": [
+    {
+      "name": "vraag_tekst",
+      "type": "string",
+      "title": {
+        "nl": "Vraag tekst",
+        "en": "Question text"
+      },
+      "example": "In welk jaar werd Homey geïntroduceerd?"
+    },
+    {
+      "name": "vraag_nummer",
+      "type": "number",
+      "title": {
+        "nl": "Vraag nummer",
+        "en": "Question number"
+      },
+      "example": 1
+    },
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": {
+        "nl": "Quiz naam",
+        "en": "Quiz name"
+      },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

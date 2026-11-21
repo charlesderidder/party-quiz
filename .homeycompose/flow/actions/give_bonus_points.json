@@ -1,0 +1,39 @@
+{
+  "title": {
+    "nl": "Geef speler bonuspunten",
+    "en": "Give player bonus points"
+  },
+  "titleFormatted": {
+    "nl": "Geef [[speler]] [[aantal]] bonuspunten",
+    "en": "Give [[speler]] [[aantal]] bonus points"
+  },
+  "args": [
+    {
+      "name": "speler",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Speler",
+        "en": "Player"
+      },
+      "placeholder": {
+        "nl": "Kies een actieve speler",
+        "en": "Select an active player"
+      }
+    },
+    {
+      "name": "aantal",
+      "type": "number",
+      "min": -5000,
+      "max": 10000,
+      "step": 50,
+      "title": {
+        "nl": "Aantal punten",
+        "en": "Points amount"
+      },
+      "placeholder": {
+        "nl": "Bijv. 250",
+        "en": "E.g. 250"
+      }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "com.homey.partyquiz",
+  "version": "1.0.0",
+  "compatibility": ">=12.0.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "nl": "Homey Party Quiz",
+    "en": "Homey Party Quiz"
+  },
+  "description": {
+    "nl": "Interactieve Kahoot-stijl groepsquiz met Web Push notificaties, live scorebord en Homey Flows voor Homey Self-Hosted Server.",
+    "en": "Interactive Kahoot-style group quiz with Web Push notifications, live scoreboard and Homey Flows for Homey Self-Hosted Server."
+  },
+  "category": [
+    "tools",
+    "lights"
+  ],
+  "brandColor": "#00A4E8",
+  "permissions": [],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "Homey Party Quiz Dev",
+    "email": "dev@homeypartyquiz.local"
+  },
+  "api": {
+    "getState": {
+      "method": "GET",
+      "path": "/state",
+      "public": true
+    },
+    "getQuizzes": {
+      "method": "GET",
+      "path": "/quizzes",
+      "public": false
+    },
+    "saveQuiz": {
+      "method": "POST",
+      "path": "/quizzes",
+      "public": false
+    },
+    "deleteQuiz": {
+      "method": "DELETE",
+      "path": "/quizzes/:id",
+      "public": false
+    },
+    "nextQuestion": {
+      "method": "POST",
+      "path": "/control/next",
+      "public": false
+    },
+    "startQuiz": {
+      "method": "POST",
+      "path": "/control/start",
+      "public": false
+    }
+  }
+}

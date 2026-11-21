@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="32" fill="url(#homeyGrad)"/>
+  <circle cx="64" cy="64" r="46" stroke="white" stroke-opacity="0.2" stroke-width="4"/>
+  <path d="M44 49C44 37.9543 52.9543 29 64 29C75.0457 29 84 37.9543 84 49C84 56.9242 79.391 63.7732 72.7072 67.0189C69.3497 68.6494 67.5 71.9549 67.5 75.689V78H56.5V74.2C56.5 67.3812 60.5944 61.2699 66.8543 58.5673C70.2072 57.1197 72.5 53.7888 72.5 49.5C72.5 44.2533 68.2467 40 63 40C57.7533 40 53.5 44.2533 53.5 49.5H44Z" fill="white"/>
+  <circle cx="62" cy="92" r="7" fill="white"/>
+  <defs>
+    <linearGradient id="homeyGrad" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00A4E8"/>
+      <stop offset="0.55" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+</svg>

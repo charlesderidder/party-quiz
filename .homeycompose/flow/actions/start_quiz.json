@@ -1,0 +1,24 @@
+{
+  "title": {
+    "nl": "Start een quiz",
+    "en": "Start a quiz"
+  },
+  "titleFormatted": {
+    "nl": "Start quiz [[quiz_naam]]",
+    "en": "Start quiz [[quiz_naam]]"
+  },
+  "args": [
+    {
+      "name": "quiz_naam",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Quiz naam",
+        "en": "Quiz name"
+      },
+      "placeholder": {
+        "nl": "Kies een opgeslagen quiz",
+        "en": "Choose a saved quiz"
+      }
+    }
+  ]
+}

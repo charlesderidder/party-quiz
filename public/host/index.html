@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homey Party Quiz — Host / Hoofdscherm</title>
+  <link rel="stylesheet" href="/css/homey-style.css" />
+  <style>
+    .host-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 8px 24px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Lobby Layout */
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .qr-panel {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+    }
+
+    .qr-box {
+      background: #fff;
+      padding: 16px;
+      border-radius: 24px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+      border: 1px solid rgba(0, 164, 232, 0.2);
+    }
+
+    .qr-box img {
+      width: 250px;
+      height: 250px;
+      display: block;
+    }
+
+    .join-url-pill {
+      background: rgba(0, 164, 232, 0.12);
+      color: var(--homey-blue);
+      border: 1px solid rgba(0, 164, 232, 0.28);
+      padding: 10px 16px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 14px;
+      word-break: break-all;
+      text-decoration: none;
+    }
+
+    .players-panel {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 12px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+
+    .player-chip {
+      background: var(--surface-glass-strong);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+      animation: popIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.88); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .player-chip-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      overflow: hidden;
+    }
+
+    .player-avatar-dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    /* Question View */
+    .question-stage {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .question-hud {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: center;
+    }
+
+    .hud-box {
+      background: var(--surface-glass-strong);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .hud-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .hud-value {
+      font-size: 28px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-progress-track {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.2);
+      overflow: hidden;
+    }
+
+    .timer-progress-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10B981, #00A4E8, #6366F1);
+      border-radius: 999px;
+      transition: width 0.2s linear;
+    }
+
+    .question-banner {
+      background: var(--surface-glass-strong);
+      border: 1px solid var(--border-glass);
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 800;
+      line-height: 1.3;
+      box-shadow: var(--shadow-soft);
+    }
+
+    /* Reveal & Podium Split */
+    .reveal-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 24px;
+    }
+
+    .leaderboard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: var(--surface-glass-strong);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .lb-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .lb-pos {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      background: rgba(0, 164, 232, 0.12);
+      color: var(--homey-blue);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .flow-ticker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: 16px;
+      font-size: 13px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.22);
+      color: var(--text-main);
+    }
+
+    @media (max-width: 980px) {
+      .lobby-grid, .reveal-grid, .question-hud {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="theme-dark">
+  <!-- Topbar -->
+  <header class="homey-topbar">
+    <a href="/" class="homey-logo-group">
+      <div class="homey-orb">Q</div>
+      <div>
+        <div style="font-weight: 800; font-size: 18px; letter-spacing: -0.02em;">Homey Party Quiz</div>
+        <div style="font-size: 12px; color: var(--text-muted);">TV &amp; Woonkamer Hoofdscherm • SDK v3</div>
+      </div>
+    </a>
+
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <select id="quizSelectDropdown" class="input-homey" style="width: auto; min-width: 240px; padding: 8px 14px; font-weight: 700;"></select>
+      <button class="btn-homey btn-sm" id="btnAddBots" title="Voeg 4 demo-spelers toe om direct te testen">🤖 +4 Demo Spelers</button>
+      <button class="btn-homey btn-sm" id="btnToggleSound">🔊 Geluid Aan</button>
+      <button class="btn-homey btn-sm" id="btnToggleTheme">☀️ Licht / Donker</button>
+      <a href="/play" target="_blank" class="btn-homey btn-sm">📱 Open /play</a>
+      <a href="/admin" class="btn-homey btn-sm">⚙️ Beheer &amp; Editor</a>
+    </div>
+  </header>
+
+  <main class="host-container">
+    <!-- Live Homey Flow Trigger Ticker -->
+    <div class="flow-ticker" id="flowTickerBar">
+      <span style="font-weight: 800; color: var(--homey-blue);">⚡ Homey Flow Live:</span>
+      <span id="flowTickerText">Klaar om Homey Flows te activeren bij elke quiz-actie...</span>
+    </div>
+
+    <!-- 1. LOBBY VIEW -->
+    <section id="viewLobby" class="lobby-grid">
+      <div class="glass-card qr-panel">
+        <span class="glass-pill" style="color: var(--homey-blue);">📱 Scan met je telefoon</span>
+        <div class="qr-box">
+          <img id="qrCodeImage" src="" alt="Scan QR Code om mee te spelen" />
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted);">Of ga in je mobiele browser naar:</div>
+        <a id="playUrlLink" href="/play" target="_blank" class="join-url-pill">/play</a>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+          🔔 Tip: Geef op je telefoon toestemming voor <strong>Web Push</strong> om na elke ronde je score en de Top 3 als pushmelding te ontvangen!
+        </div>
+      </div>
+
+      <div class="glass-card players-panel">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap;">
+            <div>
+              <h1 id="lobbyQuizTitle" style="font-size: 28px; font-weight: 900;">Homey Party Quiz</h1>
+              <p id="lobbyQuizDesc" style="color: var(--text-muted); font-size: 14.5px; margin-top: 4px;"></p>
+            </div>
+            <div class="glass-pill" style="font-size: 15px;">
+              👥 <span id="lobbyPlayerCount">0</span> Spelers in lobby
+            </div>
+          </div>
+
+          <div id="lobbyPlayersGrid" class="players-grid"></div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid var(--border-subtle); padding-top: 20px; flex-wrap: wrap;">
+          <div style="font-size: 13px; color: var(--text-muted);">
+            ⏱️ <strong>Puntentelling:</strong> Eerste seconde = <strong>1000 punten</strong>, daarna vanaf seconde 2 t/m 20 aflopend naar 0!
+          </div>
+          <button id="btnStartQuiz" class="btn-homey btn-primary btn-lg">🚀 Start Quiz Nu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ACTIVE QUESTION VIEW -->
+    <section id="viewQuestion" class="glass-card question-stage" style="display: none;">
+      <div class="question-hud">
+        <div class="hud-box">
+          <div>
+            <div class="hud-label" id="qCounterLabel">VRAAG 1 VAN 5</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">Resterende tijd</div>
+          </div>
+          <div class="hud-value" style="color: var(--homey-blue);"><span id="qTimerValue">20</span>s</div>
+        </div>
+
+        <div class="hud-box">
+          <div>
+            <div class="hud-label">TE VERDIENEN PUNTEN</div>
+            <div style="font-size: 12px; color: var(--homey-green); font-weight: 700;" id="pointsRuleHint">1e sec = 1000 pt, sec 2-20 ↘ 0</div>
+          </div>
+          <div class="hud-value" style="color: var(--homey-amber);"><span id="qPointsTicker">1000</span> pt</div>
+        </div>
+
+        <div class="hud-box">
+          <div>
+            <div class="hud-label">BINNENGEKOMEN ANTWOORDEN</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">Live via Socket.io</div>
+          </div>
+          <div class="hud-value"><span id="qAnsweredCount">0</span> / <span id="qTotalPlayers">0</span></div>
+        </div>
+      </div>
+
+      <div class="timer-progress-track">
+        <div id="qTimerBar" class="timer-progress-bar"></div>
+      </div>
+
+      <div class="question-banner" id="qTextBanner">Vraag wordt geladen...</div>
+
+      <div class="answer-grid" id="qOptionsGrid"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <button id="btnBotAnswers" class="btn-homey btn-sm">🤖 Laat Demo-Spelers Antwoorden</button>
+        <button id="btnSkipQuestion" class="btn-homey">⏭️ Sluit Vraag &amp; Toon Tussenstand</button>
+      </div>
+    </section>
+
+    <!-- 3. REVEAL & PODIUM VIEW (TUSSENSTAND) -->
+    <section id="viewReveal" style="display: none; flex-direction: column; gap: 22px;">
+      <div class="glass-card" style="padding: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div>
+            <span class="glass-pill" style="color: var(--homey-green); margin-bottom: 6px;">✅ Juiste Antwoord &amp; Tussenstand</span>
+            <h2 id="revealQuestionTitle" style="font-size: 22px; font-weight: 800;"></h2>
+          </div>
+          <button id="btnNextQuestion" class="btn-homey btn-primary btn-lg">➡️ Volgende Vraag</button>
+        </div>
+
+        <div class="answer-grid" id="revealOptionsGrid"></div>
+      </div>
+
+      <div class="reveal-grid">
+        <!-- Animated Top 3 Podium -->
+        <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="font-size: 20px; font-weight: 800;">🏆 Top 3 Podium</h3>
+            <span class="glass-pill">Live Tussenstand</span>
+          </div>
+          <div id="revealPodiumStage" class="podium-stage"></div>
+        </div>
+
+        <!-- Full Leaderboard with Climbers & Fallers -->
+        <div class="glass-card" style="padding: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+            <h3 style="font-size: 20px; font-weight: 800;">📊 Volledige Ranglijst (Stijgers &amp; Dalers)</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Web Push verzonden 🔔</span>
+          </div>
+          <div id="revealLeaderboardList" class="leaderboard-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. FINISHED / WINNER VIEW -->
+    <section id="viewFinished" class="glass-card" style="display: none; padding: 36px; text-align: center;">
+      <div style="font-size: 52px; margin-bottom: 8px;">🏆🎉</div>
+      <h1 style="font-size: 36px; font-weight: 900;" id="winnerHeadline">Quiz Voltooid!</h1>
+      <p style="color: var(--text-muted); font-size: 16px; margin-top: 6px;" id="winnerSubline"></p>
+
+      <div id="finalPodiumStage" class="podium-stage" style="margin: 24px auto; max-width: 560px;"></div>
+
+      <div style="max-width: 680px; margin: 28px auto 0; text-align: left;">
+        <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 12px;">Eindranglijst</h3>
+        <div id="finalLeaderboardList" class="leaderboard-list"></div>
+      </div>
+
+      <div style="margin-top: 28px; display: flex; justify-content: center; gap: 14px;">
+        <button id="btnRestartLobby" class="btn-homey btn-primary btn-lg">🔄 Terug naar Lobby / Nieuwe Ronde</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/host/host.js"></script>
+</body>
+</html>

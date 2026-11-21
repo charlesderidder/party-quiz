@@ -1,0 +1,38 @@
+{
+  "title": {
+    "nl": "Een speler een fout antwoord heeft gegeven",
+    "en": "A player answered incorrectly"
+  },
+  "tokens": [
+    {
+      "name": "speler_naam",
+      "type": "string",
+      "title": { "nl": "Speler naam", "en": "Player name" },
+      "example": "Daan"
+    },
+    {
+      "name": "score",
+      "type": "number",
+      "title": { "nl": "Score", "en": "Score" },
+      "example": 1200
+    },
+    {
+      "name": "positie",
+      "type": "number",
+      "title": { "nl": "Positie", "en": "Position" },
+      "example": 4
+    },
+    {
+      "name": "vorige_positie",
+      "type": "number",
+      "title": { "nl": "Vorige positie", "en": "Previous position" },
+      "example": 3
+    },
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": { "nl": "Quiz naam", "en": "Quiz name" },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "title": {
+    "nl": "Speler !{{valt|valt niet}} buiten de top 3",
+    "en": "Player !{{is|is not}} outside the top 3"
+  },
+  "titleFormatted": {
+    "nl": "Speler [[player]] !{{valt|valt niet}} buiten de top 3",
+    "en": "Player [[player]] !{{is|is not}} outside the top 3"
+  },
+  "args": [
+    {
+      "name": "player",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Speler",
+        "en": "Player"
+      },
+      "placeholder": {
+        "nl": "Kies speler of gebruik trigger-context",
+        "en": "Select player or use trigger context"
+      }
+    }
+  ]
+}

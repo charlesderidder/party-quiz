@@ -1,0 +1,33 @@
+{
+  "name": {
+    "nl": "Party Quiz Live Status",
+    "en": "Party Quiz Live Status"
+  },
+  "height": 280,
+  "transparent": false,
+  "settings": [
+    {
+      "id": "showControls",
+      "type": "checkbox",
+      "title": {
+        "nl": "Toon bedieningsknoppen (Volgende vraag / Open Host)",
+        "en": "Show control buttons (Next question / Open Host)"
+      },
+      "value": true
+    }
+  ],
+  "api": {
+    "getStatus": {
+      "method": "GET",
+      "path": "/"
+    },
+    "nextQuestion": {
+      "method": "POST",
+      "path": "/next"
+    },
+    "startDefaultQuiz": {
+      "method": "POST",
+      "path": "/start"
+    }
+  }
+}

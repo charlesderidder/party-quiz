@@ -1,0 +1,12 @@
+{
+  "app": {
+    "title": "Homey Party Quiz",
+    "subtitle": "Realtime Groepsquiz voor Homey Self-Hosted Server"
+  },
+  "phases": {
+    "lobby": "Wachten op spelers in de lobby",
+    "question": "Vraag actief",
+    "reveal": "Tussenstand & Podium",
+    "finished": "Eindstand"
+  }
+}

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homey Party Quiz — App Instellingen</title>
+  <link rel="stylesheet" href="/css/homey-style.css" />
+  <style>
+    .settings-shell {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 18px 20px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .settings-section {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .field-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .info-callout {
+      background: linear-gradient(135deg, rgba(0, 164, 232, 0.1), rgba(99, 102, 241, 0.1));
+      border: 1px solid rgba(0, 164, 232, 0.3);
+      border-radius: 18px;
+      padding: 18px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--homey-green);
+      margin-right: 7px;
+    }
+  </style>
+</head>
+<body>
+  <header class="homey-topbar">
+    <a href="/" class="homey-logo-group">
+      <div class="homey-orb">🎛️</div>
+      <div>
+        <div style="font-weight: 800; font-size: 18px;">Homey Party Quiz — App Instellingen</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Server-URL • HTTPS Reverse Proxy • Web Push (VAPID) • Geluid</div>
+      </div>
+    </a>
+    <a href="/admin" class="btn-homey btn-sm">🧩 Naar volledige Quiz Editor</a>
+  </header>
+
+  <main class="settings-shell">
+    <div class="info-callout">
+      <strong>🔒 Web Push gebruikt HTTPS</strong><br />
+      Browsers staan Service Workers en Web Push alleen toe via HTTPS (of <code>localhost</code>).
+      Draai je Homey Self-Hosted Server achter een reverse proxy met Let's Encrypt-certificaat
+      (Nginx Proxy Manager, Caddy, Synology Application Portal, Traefik)? Vul dan hieronder de
+      publieke HTTPS-URL in. De QR-code op <code>/host</code> en de push-abonnementen gebruiken
+      automatisch deze URL.
+    </div>
+
+    <!-- Server / Reverse Proxy -->
+    <section class="glass-card settings-section">
+      <div>
+        <h2 style="font-size: 18px; font-weight: 900;">🌐 Server &amp; Reverse Proxy</h2>
+        <p class="field-hint">
+          Laat de URL leeg om automatisch het lokale IP-adres van de Homey SHS te gebruiken
+          (bijv. <code>http://192.168.1.50:3456</code>).
+        </p>
+      </div>
+
+      <div class="field-row">
+        <label class="field-label" for="inputPublicUrl">Publieke HTTPS basis-URL</label>
+        <input id="inputPublicUrl" class="input-homey" placeholder="https://quiz.mijn-domein.nl" />
+        <div class="field-hint">
+          Gedetecteerd lokaal adres:
+          <strong id="lanIpValue">laden…</strong>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="field-label" for="inputPort">Webserver poort (standaard 3456)</label>
+        <input id="inputPort" type="number" class="input-homey" placeholder="3456" />
+        <div class="field-hint">
+          Wijzig je de poort? Herstart de app via <code>homey app run</code> of de Homey Developer Tools.
+        </div>
+      </div>
+    </section>
+
+    <!-- Web Push / VAPID -->
+    <section class="glass-card settings-section">
+      <div>
+        <h2 style="font-size: 18px; font-weight: 900;">🔔 Web Push (VAPID)</h2>
+        <p class="field-hint">
+          De VAPID-keys worden bij de eerste start automatisch gegenereerd en veilig opgeslagen in
+          <code>Homey.settings</code>.
+        </p>
+      </div>
+
+      <div class="field-row">
+        <label class="field-label" for="inputVapidSubject">VAPID contact subject</label>
+        <input id="inputVapidSubject" class="input-homey" placeholder="mailto:partyquiz@homey.local" />
+      </div>
+
+      <div class="field-row">
+        <label class="field-label">Publieke VAPID-sleutel</label>
+        <input id="vapidKeyValue" class="input-homey" readonly style="font-family: monospace; font-size: 12px;" />
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div style="font-size: 13px;">
+          <span class="status-dot"></span>
+          Geregistreerde spelers met push: <strong id="pushSubCount">0</strong>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button id="btnTestPush" class="btn-homey">🔔 Testmelding sturen</button>
+          <button id="btnRegenKeys" class="btn-homey btn-danger">🔄 Nieuwe VAPID-keys</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Spelgedrag -->
+    <section class="glass-card settings-section">
+      <div>
+        <h2 style="font-size: 18px; font-weight: 900;">🎮 Spelgedrag &amp; Geluid</h2>
+      </div>
+
+      <label style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700;">
+        <input id="chkSound" type="checkbox" style="width: 20px; height: 20px; accent-color: var(--homey-blue);" />
+        Geluidseffecten op het hostscherm standaard aan
+      </label>
+
+      <div class="field-row">
+        <label class="field-label" for="selectDefaultQuiz">Standaard quiz bij opstarten</label>
+        <select id="selectDefaultQuiz" class="input-homey"></select>
+      </div>
+
+      <div class="info-callout" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+        <strong>⏱️ Puntentelling (vast)</strong><br />
+        De eerste seconde (<code>0 – 1s</code>) dat een antwoord getoond wordt levert altijd
+        <strong>1000 punten</strong> op. Vanaf seconde 2 tot en met de maximale antwoordtijd
+        (standaard 20 seconden) loopt de score lineair af naar <strong>0 punten</strong>.
+      </div>
+    </section>
+
+    <div id="saveBar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+      <div id="settingsSavedMsg" style="font-size: 13px; font-weight: 700; color: var(--homey-green);"></div>
+      <button id="btnSaveAll" class="btn-homey btn-primary btn-lg">💾 Instellingen Opslaan</button>
+    </div>
+  </main>
+
+  <script>
+    'use strict';
+
+    let settingsData = null;
+
+    function api(path, options) {
+      return fetch(path, options).then(async res => {
+        const text = await res.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+        if (!res.ok) throw new Error((data && (data.error || data.message)) || `HTTP ${res.status}`);
+        return data;
+      });
+    }
+
+    async function loadAll() {
+      try {
+        const [settings, quizzes] = await Promise.all([api('/api/settings'), api('/api/quizzes')]);
+        settingsData = settings;
+        const cfg = settings.serverConfig || {};
+
+        document.getElementById('inputPublicUrl').value = cfg.publicBaseUrl || '';
+        document.getElementById('inputPort').value = cfg.serverPort || 3456;
+        document.getElementById('inputVapidSubject').value = cfg.vapidSubject || 'mailto:partyquiz@homey.local';
+        document.getElementById('vapidKeyValue').value = settings.vapidPublicKey || '—';
+        document.getElementById('lanIpValue').textContent = settings.detectedLanIp || 'onbekend';
+        document.getElementById('pushSubCount').textContent = settings.subscriptionCount || 0;
+        document.getElementById('chkSound').checked = cfg.soundEnabled !== false;
+
+        const select = document.getElementById('selectDefaultQuiz');
+        select.innerHTML = (quizzes.quizzes || [])
+          .map(q => `<option value="${q.id}" ${q.id === (cfg.defaultQuizId || '') ? 'selected' : ''}>${q.title}</option>`)
+          .join('');
+      } catch (err) {
+        document.getElementById('settingsSavedMsg').textContent = `❌ Laden mislukt: ${err.message}`;
+        document.getElementById('settingsSavedMsg').style.color = 'var(--homey-rose)';
+      }
+    }
+
+    document.getElementById('btnSaveAll').addEventListener('click', async () => {
+      const msg = document.getElementById('settingsSavedMsg');
+      msg.style.color = 'var(--homey-green)';
+      msg.textContent = 'Bezig met opslaan…';
+      try {
+        await api('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            publicBaseUrl: document.getElementById('inputPublicUrl').value.trim(),
+            serverPort: Number(document.getElementById('inputPort').value) || 3456,
+            vapidSubject: document.getElementById('inputVapidSubject').value.trim(),
+            soundEnabled: document.getElementById('chkSound').checked,
+            defaultQuizId: document.getElementById('selectDefaultQuiz').value
+          })
+        });
+        msg.textContent = '✅ Instellingen opgeslagen in Homey.settings.';
+        await loadAll();
+      } catch (err) {
+        msg.style.color = 'var(--homey-rose)';
+        msg.textContent = `❌ Opslaan mislukt: ${err.message}`;
+      }
+    });
+
+    document.getElementById('btnTestPush').addEventListener('click', async () => {
+      const msg = document.getElementById('settingsSavedMsg');
+      try {
+        await api('/api/push/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'Testmelding vanuit de Homey Party Quiz app-instellingen 🎉' })
+        });
+        msg.style.color = 'var(--homey-green)';
+        msg.textContent = '🔔 Testmelding verzonden naar alle geregistreerde spelers.';
+      } catch (err) {
+        msg.style.color = 'var(--homey-rose)';
+        msg.textContent = `❌ ${err.message}`;
+      }
+    });
+
+    document.getElementById('btnRegenKeys').addEventListener('click', async () => {
+      if (!confirm('Nieuwe VAPID-keys genereren? Bestaande push-abonnementen komen te vervallen.')) return;
+      const msg = document.getElementById('settingsSavedMsg');
+      try {
+        await api('/api/push/regenerate-vapid', { method: 'POST' });
+        msg.style.color = 'var(--homey-green)';
+        msg.textContent = '🔄 Nieuwe VAPID-keys gegenereerd.';
+        await loadAll();
+      } catch (err) {
+        msg.style.color = 'var(--homey-rose)';
+        msg.textContent = `❌ ${err.message}`;
+      }
+    });
+
+    loadAll();
+  </script>
+</body>
+</html>

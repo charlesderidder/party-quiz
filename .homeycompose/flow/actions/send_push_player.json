@@ -1,0 +1,36 @@
+{
+  "title": {
+    "nl": "Verstuur web-push notificatie naar een speler",
+    "en": "Send web-push notification to a player"
+  },
+  "titleFormatted": {
+    "nl": "Verstuur web-push notificatie naar [[speler]] met de tekst [[tekst]]",
+    "en": "Send web-push notification to [[speler]] with text [[tekst]]"
+  },
+  "args": [
+    {
+      "name": "speler",
+      "type": "autocomplete",
+      "title": {
+        "nl": "Speler",
+        "en": "Player"
+      },
+      "placeholder": {
+        "nl": "Kies een actieve speler",
+        "en": "Select an active player"
+      }
+    },
+    {
+      "name": "tekst",
+      "type": "text",
+      "title": {
+        "nl": "Berichttekst",
+        "en": "Message text"
+      },
+      "placeholder": {
+        "nl": "Bijv. Goed bezig, je staat bovenaan!",
+        "en": "E.g. Great job, you are in the lead!"
+      }
+    }
+  ]
+}

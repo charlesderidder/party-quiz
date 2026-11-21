@@ -1,0 +1,908 @@
+{
+  "id": "com.homey.partyquiz",
+  "version": "1.0.0",
+  "compatibility": ">=12.0.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "nl": "Homey Party Quiz",
+    "en": "Homey Party Quiz"
+  },
+  "description": {
+    "nl": "Interactieve Kahoot-stijl groepsquiz met Web Push notificaties, live scorebord en Homey Flows voor Homey Self-Hosted Server.",
+    "en": "Interactive Kahoot-style group quiz with Web Push notifications, live scoreboard and Homey Flows for Homey Self-Hosted Server."
+  },
+  "category": [
+    "tools",
+    "lights"
+  ],
+  "brandColor": "#00A4E8",
+  "permissions": [],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "Homey Party Quiz Dev",
+    "email": "dev@homeypartyquiz.local"
+  },
+  "api": {
+    "getState": {
+      "method": "GET",
+      "path": "/state",
+      "public": true
+    },
+    "getQuizzes": {
+      "method": "GET",
+      "path": "/quizzes",
+      "public": false
+    },
+    "saveQuiz": {
+      "method": "POST",
+      "path": "/quizzes",
+      "public": false
+    },
+    "deleteQuiz": {
+      "method": "DELETE",
+      "path": "/quizzes/:id",
+      "public": false
+    },
+    "nextQuestion": {
+      "method": "POST",
+      "path": "/control/next",
+      "public": false
+    },
+    "startQuiz": {
+      "method": "POST",
+      "path": "/control/start",
+      "public": false
+    }
+  },
+  "flow": {
+    "triggers": [
+      {
+        "id": "player_answered_correct",
+        "title": {
+          "nl": "Een speler een goed antwoord heeft gegeven",
+          "en": "A player answered correctly"
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Sophie"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 2850
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 1
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 2
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "player_answered_wrong",
+        "title": {
+          "nl": "Een speler een fout antwoord heeft gegeven",
+          "en": "A player answered incorrectly"
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Daan"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 1200
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 4
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 3
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "player_entered_top3",
+        "title": {
+          "nl": "Een speler in de top 3 zit",
+          "en": "A player is in the top 3"
+        },
+        "hint": {
+          "nl": "Triggert wanneer een speler de top 3 binnenkomt of erin staat na een ronde.",
+          "en": "Triggers when a player enters or is in the top 3 after a round."
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Sophie"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 3800
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 2
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 4
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "player_is_first",
+        "title": {
+          "nl": "Een speler op de 1e plek staat",
+          "en": "A player is in 1st place"
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Sophie"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 4500
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 1
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 2
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "player_left_top3",
+        "title": {
+          "nl": "Een speler buiten de top 3 valt",
+          "en": "A player falls outside the top 3"
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Daan"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 2100
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 4
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 3
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "player_rank_up",
+        "title": {
+          "nl": "Een speler is gestegen in positie",
+          "en": "A player moved up in rank"
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Sophie"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 3400
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 2
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 4
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "player_won",
+        "title": {
+          "nl": "Een speler heeft gewonnen",
+          "en": "A player has won the quiz"
+        },
+        "hint": {
+          "nl": "Triggert aan het einde van de quiz voor de winnaar op plek 1.",
+          "en": "Triggers at the end of the quiz for the 1st place winner."
+        },
+        "tokens": [
+          {
+            "name": "speler_naam",
+            "type": "string",
+            "title": {
+              "nl": "Speler naam",
+              "en": "Player name"
+            },
+            "example": "Sophie"
+          },
+          {
+            "name": "score",
+            "type": "number",
+            "title": {
+              "nl": "Score",
+              "en": "Score"
+            },
+            "example": 8950
+          },
+          {
+            "name": "positie",
+            "type": "number",
+            "title": {
+              "nl": "Positie",
+              "en": "Position"
+            },
+            "example": 1
+          },
+          {
+            "name": "vorige_positie",
+            "type": "number",
+            "title": {
+              "nl": "Vorige positie",
+              "en": "Previous position"
+            },
+            "example": 1
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "question_asked",
+        "title": {
+          "nl": "Een nieuwe vraag wordt gesteld",
+          "en": "A new question is asked"
+        },
+        "hint": {
+          "nl": "Triggert op het moment dat een nieuwe vraag op het scherm verschijnt.",
+          "en": "Triggers the moment a new question appears on screen."
+        },
+        "tokens": [
+          {
+            "name": "vraag_tekst",
+            "type": "string",
+            "title": {
+              "nl": "Vraag tekst",
+              "en": "Question text"
+            },
+            "example": "In welk jaar werd Homey geïntroduceerd?"
+          },
+          {
+            "name": "vraag_nummer",
+            "type": "number",
+            "title": {
+              "nl": "Vraag nummer",
+              "en": "Question number"
+            },
+            "example": 1
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "question_time_up",
+        "title": {
+          "nl": "De tijd voor een vraag voorbij is",
+          "en": "Time for a question is up"
+        },
+        "hint": {
+          "nl": "Triggert wanneer de afteltimer op 0 staat of iedereen heeft geantwoord.",
+          "en": "Triggers when the countdown timer reaches 0 or all players have answered."
+        },
+        "tokens": [
+          {
+            "name": "vraag_tekst",
+            "type": "string",
+            "title": {
+              "nl": "Vraag tekst",
+              "en": "Question text"
+            },
+            "example": "In welk jaar werd Homey geïntroduceerd?"
+          },
+          {
+            "name": "vraag_nummer",
+            "type": "number",
+            "title": {
+              "nl": "Vraag nummer",
+              "en": "Question number"
+            },
+            "example": 1
+          },
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      },
+      {
+        "id": "quiz_started",
+        "title": {
+          "nl": "Een nieuwe quiz start",
+          "en": "A new quiz starts"
+        },
+        "hint": {
+          "nl": "Triggert zodra de host of een Flow een nieuwe quiz start.",
+          "en": "Triggers when the host or a Flow starts a new quiz."
+        },
+        "tokens": [
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "did_player_rank_up",
+        "title": {
+          "nl": "Speler !{{is|is niet}} gestegen in positie",
+          "en": "Player !{{did|did not}} move up in rank"
+        },
+        "titleFormatted": {
+          "nl": "Speler [[player]] !{{is|is niet}} gestegen in positie",
+          "en": "Player [[player]] !{{did|did not}} move up in rank"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      },
+      {
+        "id": "is_last_answer_correct",
+        "title": {
+          "nl": "Laatste antwoord van speler !{{was|was niet}} goed",
+          "en": "Last answer of player !{{was|was not}} correct"
+        },
+        "titleFormatted": {
+          "nl": "Laatste antwoord van [[player]] !{{was|was niet}} goed",
+          "en": "Last answer of [[player]] !{{was|was not}} correct"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      },
+      {
+        "id": "is_last_answer_wrong",
+        "title": {
+          "nl": "Laatste antwoord van speler !{{was|was niet}} fout",
+          "en": "Last answer of player !{{was|was not}} wrong"
+        },
+        "titleFormatted": {
+          "nl": "Laatste antwoord van [[player]] !{{was|was niet}} fout",
+          "en": "Last answer of [[player]] !{{was|was not}} wrong"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      },
+      {
+        "id": "is_player_first",
+        "title": {
+          "nl": "Speler !{{staat|staat niet}} op de 1e plek",
+          "en": "Player !{{is|is not}} in 1st place"
+        },
+        "titleFormatted": {
+          "nl": "Speler [[player]] !{{staat|staat niet}} op de 1e plek",
+          "en": "Player [[player]] !{{is|is not}} in 1st place"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      },
+      {
+        "id": "is_player_in_top3",
+        "title": {
+          "nl": "Speler !{{zit|zit niet}} in de top 3",
+          "en": "Player !{{is|is not}} in the top 3"
+        },
+        "titleFormatted": {
+          "nl": "Speler [[player]] !{{zit|zit niet}} in de top 3",
+          "en": "Player [[player]] !{{is|is not}} in the top 3"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      },
+      {
+        "id": "is_player_outside_top3",
+        "title": {
+          "nl": "Speler !{{valt|valt niet}} buiten de top 3",
+          "en": "Player !{{is|is not}} outside the top 3"
+        },
+        "titleFormatted": {
+          "nl": "Speler [[player]] !{{valt|valt niet}} buiten de top 3",
+          "en": "Player [[player]] !{{is|is not}} outside the top 3"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      },
+      {
+        "id": "is_player_winner",
+        "title": {
+          "nl": "Speler !{{is|is niet}} de winnaar",
+          "en": "Player !{{is|is not}} the winner"
+        },
+        "titleFormatted": {
+          "nl": "Speler [[player]] !{{is|is niet}} de winnaar",
+          "en": "Player [[player]] !{{is|is not}} the winner"
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "give_bonus_points",
+        "title": {
+          "nl": "Geef speler bonuspunten",
+          "en": "Give player bonus points"
+        },
+        "titleFormatted": {
+          "nl": "Geef [[speler]] [[aantal]] bonuspunten",
+          "en": "Give [[speler]] [[aantal]] bonus points"
+        },
+        "args": [
+          {
+            "name": "speler",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies een actieve speler",
+              "en": "Select an active player"
+            }
+          },
+          {
+            "name": "aantal",
+            "type": "number",
+            "min": -5000,
+            "max": 10000,
+            "step": 50,
+            "title": {
+              "nl": "Aantal punten",
+              "en": "Points amount"
+            },
+            "placeholder": {
+              "nl": "Bijv. 250",
+              "en": "E.g. 250"
+            }
+          }
+        ]
+      },
+      {
+        "id": "next_question",
+        "title": {
+          "nl": "Ga naar de volgende vraag",
+          "en": "Go to the next question"
+        },
+        "hint": {
+          "nl": "Schakelt direct door naar de volgende vraag of het tussenstand-podium.",
+          "en": "Advances immediately to the next question or leaderboard podium."
+        }
+      },
+      {
+        "id": "send_push_all",
+        "title": {
+          "nl": "Verstuur web-push notificatie naar alle spelers",
+          "en": "Send web-push notification to all players"
+        },
+        "titleFormatted": {
+          "nl": "Verstuur web-push notificatie naar alle spelers met de tekst [[tekst]]",
+          "en": "Send web-push notification to all players with text [[tekst]]"
+        },
+        "args": [
+          {
+            "name": "tekst",
+            "type": "text",
+            "title": {
+              "nl": "Berichttekst",
+              "en": "Message text"
+            },
+            "placeholder": {
+              "nl": "Bijv. Tijd voor de finale-ronde!",
+              "en": "E.g. Time for the final round!"
+            }
+          }
+        ]
+      },
+      {
+        "id": "send_push_player",
+        "title": {
+          "nl": "Verstuur web-push notificatie naar een speler",
+          "en": "Send web-push notification to a player"
+        },
+        "titleFormatted": {
+          "nl": "Verstuur web-push notificatie naar [[speler]] met de tekst [[tekst]]",
+          "en": "Send web-push notification to [[speler]] with text [[tekst]]"
+        },
+        "args": [
+          {
+            "name": "speler",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies een actieve speler",
+              "en": "Select an active player"
+            }
+          },
+          {
+            "name": "tekst",
+            "type": "text",
+            "title": {
+              "nl": "Berichttekst",
+              "en": "Message text"
+            },
+            "placeholder": {
+              "nl": "Bijv. Goed bezig, je staat bovenaan!",
+              "en": "E.g. Great job, you are in the lead!"
+            }
+          }
+        ]
+      },
+      {
+        "id": "start_quiz",
+        "title": {
+          "nl": "Start een quiz",
+          "en": "Start a quiz"
+        },
+        "titleFormatted": {
+          "nl": "Start quiz [[quiz_naam]]",
+          "en": "Start quiz [[quiz_naam]]"
+        },
+        "args": [
+          {
+            "name": "quiz_naam",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "placeholder": {
+              "nl": "Kies een opgeslagen quiz",
+              "en": "Choose a saved quiz"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "widgets": {
+    "quiz-status": {
+      "name": {
+        "nl": "Party Quiz Live Status",
+        "en": "Party Quiz Live Status"
+      },
+      "height": 280,
+      "transparent": false,
+      "settings": [
+        {
+          "id": "showControls",
+          "type": "checkbox",
+          "title": {
+            "nl": "Toon bedieningsknoppen (Volgende vraag / Open Host)",
+            "en": "Show control buttons (Next question / Open Host)"
+          },
+          "value": true
+        }
+      ],
+      "api": {
+        "getStatus": {
+          "method": "GET",
+          "path": "/"
+        },
+        "nextQuestion": {
+          "method": "POST",
+          "path": "/next"
+        },
+        "startDefaultQuiz": {
+          "method": "POST",
+          "path": "/start"
+        }
+      }
+    }
+  }
+}

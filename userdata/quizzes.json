@@ -1,0 +1,133 @@
+[
+  {
+    "id": "quiz_homey_smarthome",
+    "title": "Homey & Smart Home Party Quiz",
+    "description": "Test wie in de woonkamer de echte Smart Home & Homey Pro expert is!",
+    "questions": [
+      {
+        "id": "q_smarthome_1",
+        "question": "In welke Nederlandse stad is Athom (de maker van Homey) opgericht?",
+        "options": [
+          "Eindhoven",
+          "Enschede",
+          "Delft",
+          "Amsterdam"
+        ],
+        "correctIndex": 1,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_smarthome_2",
+        "question": "Hoeveel punten verdien je in Homey Party Quiz als je binnen de allereerste seconde goed antwoordt?",
+        "options": [
+          "500 punten",
+          "750 punten",
+          "1000 punten",
+          "1500 punten"
+        ],
+        "correctIndex": 2,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_smarthome_3",
+        "question": "Hoe heet de geavanceerde visuele automatiseringseditor van Homey op web en tablet?",
+        "options": [
+          "Advanced Flow",
+          "Homey Script Blueprints",
+          "Node-RED Canvas",
+          "Smart Routines Pro"
+        ],
+        "correctIndex": 0,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_smarthome_4",
+        "question": "Welke draadloze technologie werkt in Europa op 868.42 MHz voor slimme sensoren en dimmers?",
+        "options": [
+          "Zigbee 3.0",
+          "Bluetooth Low Energy",
+          "Z-Wave",
+          "Wi-Fi 6E"
+        ],
+        "correctIndex": 2,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_smarthome_5",
+        "question": "Welke virtualisatiesoftware wordt vaak gebruikt om Homey Self-Hosted Server (SHS) lokaal te draaien?",
+        "options": [
+          "Proxmox VE",
+          "GameBoy Advance Emulator",
+          "Adobe Creative Cloud",
+          "Winamp Server"
+        ],
+        "correctIndex": 0,
+        "timeLimit": 20,
+        "points": 1000
+      }
+    ]
+  },
+  {
+    "id": "quiz_nl_pubquiz",
+    "title": "De Grote Vrijdagavond Pubquiz",
+    "description": "Algemene kennis, muziek, wetenschap en gezelligheid voor de hele groep!",
+    "questions": [
+      {
+        "id": "q_pub_1",
+        "question": "Welke planeet in ons zonnestelsel staat het dichtst bij de zon?",
+        "options": [
+          "Venus",
+          "Mercurius",
+          "Mars",
+          "Jupiter"
+        ],
+        "correctIndex": 1,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_pub_2",
+        "question": "Wat is het scheikundige symbool voor het edelmetaal Goud?",
+        "options": [
+          "Ag",
+          "Gd",
+          "Au",
+          "Fe"
+        ],
+        "correctIndex": 2,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_pub_3",
+        "question": "Uit hoeveel veldspelers (inclusief keeper) bestaat één voetbalteam op het veld?",
+        "options": [
+          "10 spelers",
+          "11 spelers",
+          "12 spelers",
+          "9 spelers"
+        ],
+        "correctIndex": 1,
+        "timeLimit": 20,
+        "points": 1000
+      },
+      {
+        "id": "q_pub_4",
+        "question": "Welk land heeft de langste kustlijn ter wereld?",
+        "options": [
+          "Australië",
+          "Noorwegen",
+          "Canada",
+          "Brazilië"
+        ],
+        "correctIndex": 2,
+        "timeLimit": 20,
+        "points": 1000
+      }
+    ]
+  }
+]
