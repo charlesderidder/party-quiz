@@ -1,6 +1,6 @@
 # 🎉 Party Quiz — Homey SDK v3 App
 
-Een complete, productieklare **Kahoot-stijl groepsquiz** als Homey-app (SDK v3), geoptimaliseerd voor
+Een complete, productieklare **interactieve groepsquiz** als Homey-app (SDK v3), geoptimaliseerd voor
 **Homey Self-Hosted Server (SHS)** op Proxmox / Linux / Docker / Synology.
 
 Vier interfaces, realtime Socket.io, Web Push (VAPID) en

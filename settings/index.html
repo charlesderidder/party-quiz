@@ -31,19 +31,45 @@
     .btn-danger { color: var(--homey-rose); }
 
     .settings-shell {
-      max-width: 860px;
+      max-width: 1320px;
       margin: 0 auto;
       padding: 18px 20px 48px;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
       gap: 18px;
     }
 
     .settings-section {
+      min-width: 0;
       padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
+    }
+
+    .settings-wide {
+      grid-column: 1 / -1;
+    }
+
+    .game-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .game-settings-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    @media (max-width: 760px) {
+      .settings-shell, .game-settings-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
 
     .field-row {
@@ -180,31 +206,35 @@
     </section>
 
     <!-- Spelgedrag -->
-    <section class="glass-card settings-section">
+    <section class="glass-card settings-section settings-wide">
       <div>
         <h2 style="font-size: 18px; font-weight: 900;">🎮 Spelgedrag &amp; Geluid</h2>
       </div>
 
-      <label style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700;">
-        <input id="chkSound" type="checkbox" style="width: 20px; height: 20px; accent-color: var(--homey-blue);" />
-        Geluidseffecten op het hostscherm standaard aan
-      </label>
+      <div class="game-settings-grid">
+        <div class="game-settings-fields">
+          <label style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700;">
+            <input id="chkSound" type="checkbox" style="width: 20px; height: 20px; accent-color: var(--homey-blue);" />
+            Geluidseffecten op het hostscherm standaard aan
+          </label>
 
-      <div class="field-row">
-        <label class="field-label" for="selectDefaultQuiz">Standaard quiz</label>
-        <select id="selectDefaultQuiz" class="input-homey"></select>
-        <div class="field-hint">Wordt geladen bij het opstarten en direct in de lobby. Een lopende quiz blijft ongewijzigd.</div>
-      </div>
+          <div class="field-row">
+            <label class="field-label" for="selectDefaultQuiz">Standaard quiz</label>
+            <select id="selectDefaultQuiz" class="input-homey"></select>
+            <div class="field-hint">Wordt geladen bij het opstarten en direct in de lobby. Een lopende quiz blijft ongewijzigd.</div>
+          </div>
+        </div>
 
-      <div class="info-callout" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
-        <strong>⏱️ Puntentelling (vast)</strong><br />
-        De eerste seconde (<code>0 – 1s</code>) dat een antwoord getoond wordt levert altijd
-        <strong>1000 punten</strong> op. Vanaf seconde 2 tot en met de maximale antwoordtijd
-        (standaard 20 seconden) loopt de score lineair af naar <strong>0 punten</strong>.
+        <div class="info-callout" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+          <strong>⏱️ Puntentelling (vast)</strong><br />
+          De eerste seconde (<code>0 – 1s</code>) dat een antwoord getoond wordt levert altijd
+          <strong>1000 punten</strong> op. Vanaf seconde 2 tot en met de maximale antwoordtijd
+          (standaard 20 seconden) loopt de score lineair af naar <strong>0 punten</strong>.
+        </div>
       </div>
     </section>
 
-    <div id="saveBar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+    <div id="saveBar" class="settings-wide" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
       <div id="settingsSavedMsg" style="font-size: 13px; font-weight: 700; color: var(--homey-green);"></div>
       <button id="btnSaveAll" class="btn-homey btn-primary btn-lg">💾 Instellingen Opslaan</button>
     </div>

@@ -12,8 +12,8 @@
     "en": "Party Quiz"
   },
   "description": {
-    "nl": "Interactieve Kahoot-stijl groepsquiz met Web Push notificaties, live scorebord en Homey Flows voor Homey Self-Hosted Server.",
-    "en": "Interactive Kahoot-style group quiz with Web Push notifications, live scoreboard and Homey Flows for Homey Self-Hosted Server."
+    "nl": "Interactieve groepsquiz met Web Push notificaties, live scorebord en Homey Flows voor Homey Self-Hosted Server.",
+    "en": "Interactive group quiz with Web Push notifications, live scoreboard and Homey Flows for Homey Self-Hosted Server."
   },
   "category": [
     "tools",
