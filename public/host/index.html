@@ -68,8 +68,9 @@
     }
 
     .players-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
       gap: 12px;
       max-height: 360px;
       overflow-y: auto;
@@ -77,6 +78,10 @@
     }
 
     .player-chip {
+      flex: 0 1 auto;
+      width: max-content;
+      min-width: min(100%, calc((100% - 32px) / 3));
+      max-width: 100%;
       background: var(--surface-glass-strong);
       border: 1px solid var(--border-subtle);
       border-radius: 18px;
@@ -105,7 +110,11 @@
 
     .player-name {
       min-width: 0;
-      overflow-wrap: anywhere;
+      white-space: nowrap;
+    }
+
+    .players-empty {
+      width: 100%;
     }
 
     .podium-name {
@@ -301,7 +310,9 @@
         flex: 1;
         max-height: none;
         align-content: start;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, clamp(300px, 21vw, 700px)), 1fr));
+      }
+      .lobby-active .player-chip {
+        min-width: min(100%, calc((100% - 44px) / 4));
       }
       .lobby-active .player-chip-left { font-size: clamp(20px, 1.55vw, 56px); }
       .lobby-active .player-avatar-dot {

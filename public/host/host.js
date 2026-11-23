@@ -152,7 +152,7 @@
     const players = state.leaderboard || [];
     if (players.length === 0) {
       grid.innerHTML = `
-        <div style="grid-column: 1 / -1; padding: 36px; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-subtle); border-radius: 20px;">
+        <div class="players-empty" style="padding: 36px; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-subtle); border-radius: 20px;">
           Nog geen spelers in de lobby. Scan de QR-code links of klik op <strong>"🤖 +4 Demo Spelers"</strong> bovenaan!
         </div>
       `;
