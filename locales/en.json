@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Homey Party Quiz",
+    "title": "Party Quiz",
     "subtitle": "Realtime Group Quiz for Homey Self-Hosted Server"
   },
   "phases": {

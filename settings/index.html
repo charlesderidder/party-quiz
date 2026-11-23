@@ -3,9 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Homey Party Quiz — App Instellingen</title>
+  <title>Party Quiz — App Instellingen</title>
   <link rel="stylesheet" href="/css/homey-style.css" />
+  <script src="/homey.js" data-origin="settings" onerror="window.homeyScriptFailed = true"></script>
   <style>
+    :root {
+      --homey-blue: #00A4E8;
+      --homey-green: #10B981;
+      --homey-rose: #F43F5E;
+      --text-muted: #64748B;
+      --border-subtle: rgba(148, 163, 184, 0.22);
+    }
+
+    .homey-topbar, .homey-logo-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .homey-topbar { justify-content: space-between; padding: 14px 20px; flex-wrap: wrap; }
+    .homey-logo-group { color: inherit; text-decoration: none; }
+    .homey-orb { font-size: 24px; }
+    .glass-card { background: rgba(255, 255, 255, 0.9); border-radius: 22px; }
+    .input-homey { width: 100%; box-sizing: border-box; padding: 10px; }
+    .btn-homey { cursor: pointer; padding: 10px 14px; border-radius: 12px; }
+    .btn-primary { background: var(--homey-blue); color: white; }
+    .btn-danger { color: var(--homey-rose); }
+
     .settings-shell {
       max-width: 860px;
       margin: 0 auto;
@@ -60,17 +84,32 @@
 </head>
 <body>
   <header class="homey-topbar">
-    <a href="/" class="homey-logo-group">
+    <a href="/" class="homey-logo-group" id="linkOverview">
       <div class="homey-orb">🎛️</div>
       <div>
-        <div style="font-weight: 800; font-size: 18px;">Homey Party Quiz — App Instellingen</div>
+        <div style="font-weight: 800; font-size: 18px;">Party Quiz — App Instellingen</div>
         <div style="font-size: 12px; color: var(--text-muted);">Server-URL • HTTPS Reverse Proxy • Web Push (VAPID) • Geluid</div>
       </div>
     </a>
-    <a href="/admin" class="btn-homey btn-sm">🧩 Naar volledige Quiz Editor</a>
+    <a href="/admin" class="btn-homey btn-sm" id="linkAdmin">🧩 Naar volledige Quiz Editor</a>
   </header>
 
   <main class="settings-shell">
+    <section class="glass-card settings-section">
+      <h2>🔒 Beheerderswachtwoord</h2>
+      <p class="field-hint">Stel bij eerste gebruik een wachtwoord van minimaal 12 tekens in. Wijzigen beëindigt bestaande beheerderssessies.</p>
+      <div class="field-row" id="homeyLoginRow" style="display:none">
+        <label class="field-label" for="inputCurrentPassword">Huidig beheerderswachtwoord</label>
+        <input id="inputCurrentPassword" type="password" class="input-homey" autocomplete="current-password" />
+        <button id="btnUnlock" class="btn-homey" type="button">Instellingen ontgrendelen</button>
+      </div>
+      <div class="field-row">
+        <label class="field-label" for="inputNewPassword">Nieuw beheerderswachtwoord</label>
+        <input id="inputNewPassword" type="password" class="input-homey" autocomplete="new-password" minlength="12" maxlength="256" />
+        <button id="btnPassword" class="btn-homey" type="button">Wachtwoord instellen of wijzigen</button>
+      </div>
+      <div id="passwordMessage" role="status"></div>
+    </section>
     <div class="info-callout">
       <strong>🔒 Web Push gebruikt HTTPS</strong><br />
       Browsers staan Service Workers en Web Push alleen toe via HTTPS (of <code>localhost</code>).
@@ -152,8 +191,9 @@
       </label>
 
       <div class="field-row">
-        <label class="field-label" for="selectDefaultQuiz">Standaard quiz bij opstarten</label>
+        <label class="field-label" for="selectDefaultQuiz">Standaard quiz</label>
         <select id="selectDefaultQuiz" class="input-homey"></select>
+        <div class="field-hint">Wordt geladen bij het opstarten en direct in de lobby. Een lopende quiz blijft ongewijzigd.</div>
       </div>
 
       <div class="info-callout" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
@@ -174,12 +214,32 @@
     'use strict';
 
     let settingsData = null;
+    let homeyInstance = null;
+    let adminPassword = '';
 
     function api(path, options) {
+      if (homeyInstance) {
+        const homeyPaths = {
+          '/api/settings': '/settings',
+          '/api/quizzes': '/quizzes',
+          '/api/push/test': '/settings/push/test',
+          '/api/push/regenerate-vapid': '/settings/push/regenerate'
+        };
+        const homeyPath = homeyPaths[path];
+        if (!homeyPath) return Promise.reject(new Error(`Onbekend API-pad: ${path}`));
+        const method = options && options.method ? options.method : 'GET';
+        const body = options && options.body ? JSON.parse(options.body) : {};
+        body.adminPassword = adminPassword;
+        return new Promise((resolve, reject) => {
+          homeyInstance.api(method, homeyPath, body, (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+          });
+        });
+      }
       return fetch(path, options).then(async res => {
         const text = await res.text();
-        let data = null;
-        try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+        const data = text ? JSON.parse(text) : null;
         if (!res.ok) throw new Error((data && (data.error || data.message)) || `HTTP ${res.status}`);
         return data;
       });
@@ -187,7 +247,20 @@
 
     async function loadAll() {
       try {
-        const [settings, quizzes] = await Promise.all([api('/api/settings'), api('/api/quizzes')]);
+        let settings;
+        let quizzes;
+        if (homeyInstance) {
+          const data = await new Promise((resolve, reject) => {
+            homeyInstance.api('POST', '/settings/access', { adminPassword }, (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            });
+          });
+          settings = data.settings;
+          quizzes = data.quizzes;
+        } else {
+          [settings, quizzes] = await Promise.all([api('/api/settings'), api('/api/quizzes')]);
+        }
         settingsData = settings;
         const cfg = settings.serverConfig || {};
 
@@ -200,14 +273,53 @@
         document.getElementById('chkSound').checked = cfg.soundEnabled !== false;
 
         const select = document.getElementById('selectDefaultQuiz');
-        select.innerHTML = (quizzes.quizzes || [])
-          .map(q => `<option value="${q.id}" ${q.id === (cfg.defaultQuizId || '') ? 'selected' : ''}>${q.title}</option>`)
-          .join('');
+        const quizList = Array.isArray(quizzes) ? quizzes : quizzes.quizzes;
+        select.replaceChildren();
+        quizList.forEach(q => {
+          const option = document.createElement('option');
+          option.value = q.id;
+          option.textContent = q.title;
+          option.selected = q.id === (cfg.defaultQuizId || '');
+          select.appendChild(option);
+        });
       } catch (err) {
         document.getElementById('settingsSavedMsg').textContent = `❌ Laden mislukt: ${err.message}`;
         document.getElementById('settingsSavedMsg').style.color = 'var(--homey-rose)';
       }
     }
+
+    document.getElementById('btnUnlock').addEventListener('click', () => {
+      adminPassword = document.getElementById('inputCurrentPassword').value;
+      loadAll();
+    });
+
+    document.getElementById('btnPassword').addEventListener('click', async () => {
+      const message = document.getElementById('passwordMessage');
+      const newPassword = document.getElementById('inputNewPassword').value;
+      try {
+        if (homeyInstance) {
+          await new Promise((resolve, reject) => {
+            homeyInstance.api('POST', '/settings/password', {
+              adminPassword: document.getElementById('inputCurrentPassword').value,
+              newPassword
+            }, (err, result) => err ? reject(err) : resolve(result));
+          });
+          adminPassword = newPassword;
+          document.getElementById('inputCurrentPassword').value = '';
+          await loadAll();
+        } else {
+          await api('/api/settings/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newPassword })
+          });
+        }
+        document.getElementById('inputNewPassword').value = '';
+        message.textContent = homeyInstance ? 'Wachtwoord opgeslagen.' : 'Wachtwoord opgeslagen. Meld je opnieuw aan.';
+      } catch (err) {
+        message.textContent = `❌ ${err.message}`;
+      }
+    });
 
     document.getElementById('btnSaveAll').addEventListener('click', async () => {
       const msg = document.getElementById('settingsSavedMsg');
@@ -239,7 +351,7 @@
         await api('/api/push/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: 'Testmelding vanuit de Homey Party Quiz app-instellingen 🎉' })
+          body: JSON.stringify({ message: 'Testmelding vanuit de Party Quiz app-instellingen 🎉' })
         });
         msg.style.color = 'var(--homey-green)';
         msg.textContent = '🔔 Testmelding verzonden naar alle geregistreerde spelers.';
@@ -263,7 +375,34 @@
       }
     });
 
-    loadAll();
+    function onHomeyReady(Homey) {
+      homeyInstance = Homey;
+      Homey.ready();
+      document.getElementById('homeyLoginRow').style.display = 'flex';
+    }
+
+    for (const [id, path] of [['linkOverview', '/'], ['linkAdmin', '/admin']]) {
+      document.getElementById(id).addEventListener('click', event => {
+        if (!homeyInstance) return;
+        event.preventDefault();
+        if (!settingsData) {
+          document.getElementById('settingsSavedMsg').textContent = '❌ Laad eerst de instellingen om de webpagina te openen.';
+          return;
+        }
+        const cfg = settingsData.serverConfig;
+        const origin = cfg.publicBaseUrl
+          ? cfg.publicBaseUrl.replace(/\/+$/, '')
+          : `http://${settingsData.detectedLanIp}:${cfg.serverPort}`;
+        homeyInstance.openURL(`${origin}${path}`);
+      });
+    }
+
+    if (window.homeyScriptFailed) {
+      loadAll();
+      const navigation = document.createElement('script');
+      navigation.src = '/admin-navigation.js';
+      document.head.appendChild(navigation);
+    }
   </script>
 </body>
 </html>

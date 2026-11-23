@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Homey Party Quiz Widget</title>
+  <title>Party Quiz Widget</title>
   <style>
     :root {
       --bg-card: rgba(255, 255, 255, 0.86);
@@ -40,6 +40,14 @@
       padding: 12px;
       user-select: none;
       overflow: hidden;
+    }
+
+    body.standalone { overflow: auto; }
+    .standalone .widget-shell {
+      max-width: 700px;
+      min-height: 256px;
+      height: auto;
+      margin: 24px auto;
     }
 
     .widget-shell {
@@ -231,7 +239,7 @@
       <div class="brand">
         <div class="brand-icon">Q</div>
         <div>
-          <div class="brand-title" id="quizTitle">Homey Party Quiz</div>
+          <div class="brand-title" id="quizTitle">Party Quiz</div>
           <div class="brand-subtitle" id="phaseText">Wachten in lobby...</div>
         </div>
       </div>
@@ -245,11 +253,10 @@
     </div>
 
     <div class="top3-list" id="top3Container">
-      <div class="empty-state">Nog geen spelers verbonden. Scan de QR-code op het hoofdscherm!</div>
+      <div class="empty-state">Quizstatus laden...</div>
     </div>
 
     <div class="widget-actions" id="controlsBar">
-      <button class="btn btn-primary" id="btnNext">⏭️ Volgende stap</button>
       <button class="btn btn-secondary" id="btnOpenHost">📺 Hoofdscherm</button>
     </div>
   </div>
@@ -257,10 +264,13 @@
   <script>
     let homeyInstance = null;
     let currentHostUrl = '/host';
+    let fallbackTimer = null;
+    let polling = false;
+    let statusFailed = false;
 
     function renderStatus(data) {
       if (!data) return;
-      document.getElementById('quizTitle').textContent = data.quizName || 'Homey Party Quiz';
+      document.getElementById('quizTitle').textContent = data.quizName || 'Party Quiz';
       document.getElementById('playerCountBadge').textContent = `👥 ${data.playerCount || 0}`;
 
       const phaseLabels = {
@@ -312,34 +322,42 @@
       }[s]));
     }
 
-    async function fetchStatusFallback() {
+    async function updateStatus(load, source) {
+      if (polling) return;
+      polling = true;
       try {
-        const res = await fetch('/api/widget/status');
-        if (res.ok) {
-          const data = await res.json();
-          renderStatus(data);
+        const data = await load();
+        if (source === 'browser' && homeyInstance) return;
+        if (!data || !Array.isArray(data.top3) || typeof data.playerCount !== 'number') {
+          throw new Error('Ongeldige quizstatus ontvangen.');
         }
+        statusFailed = false;
+        renderStatus(data);
       } catch (err) {
-        // Ignore transient network errors
+        if (source === 'browser' && homeyInstance) return;
+        if (!statusFailed) console.error('Quizstatus laden mislukt:', err);
+        statusFailed = true;
+        document.getElementById('phaseText').textContent = 'Verbinding mislukt';
+        document.getElementById('playerCountBadge').textContent = '👥 —';
+        document.getElementById('questionCounter').textContent = 'Offline';
+        document.getElementById('top3Container').textContent =
+          'Quizstatus niet beschikbaar. Controleer of de app draait en probeer opnieuw.';
+      } finally {
+        polling = false;
       }
     }
 
-    async function triggerNextStep() {
-      if (homeyInstance) {
-        try {
-          const status = await homeyInstance.api('POST', '/next', {});
-          renderStatus(status);
-          return;
-        } catch (e) {}
-      }
-      const res = await fetch('/api/widget/next', { method: 'POST' });
-      if (res.ok) renderStatus(await res.json());
+    function fetchStatusFallback() {
+      return updateStatus(async () => {
+        const res = await fetch('/api/widget/status', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      }, 'browser');
     }
 
-    document.getElementById('btnNext').addEventListener('click', triggerNextStep);
     document.getElementById('btnOpenHost').addEventListener('click', () => {
-      if (homeyInstance && homeyInstance.openURL) {
-        homeyInstance.openURL(currentHostUrl);
+      if (homeyInstance && homeyInstance.popup) {
+        homeyInstance.popup(currentHostUrl).catch(err => console.error('Hostscherm openen mislukt:', err));
       } else {
         window.open(currentHostUrl, '_blank');
       }
@@ -348,18 +366,14 @@
     // Official Homey SDK v3 Widget callback
     function onHomeyReady(Homey) {
       homeyInstance = Homey;
+      if (fallbackTimer) clearInterval(fallbackTimer);
       const settings = Homey.getSettings();
       if (settings && settings.showControls === false) {
         document.getElementById('controlsBar').style.display = 'none';
       }
       Homey.ready();
 
-      const poll = async () => {
-        try {
-          const data = await Homey.api('GET', '/');
-          renderStatus(data);
-        } catch (err) {}
-      };
+      const poll = () => updateStatus(() => Homey.api('GET', '/', {}), 'homey');
       poll();
       setInterval(poll, 2000);
     }
@@ -368,8 +382,12 @@
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
         if (!homeyInstance) {
+          document.body.classList.add('standalone');
+          const navigation = document.createElement('script');
+          navigation.src = '/admin-navigation.js';
+          document.head.appendChild(navigation);
           fetchStatusFallback();
-          setInterval(fetchStatusFallback, 1500);
+          fallbackTimer = setInterval(fetchStatusFallback, 1500);
         }
       }, 300);
     });

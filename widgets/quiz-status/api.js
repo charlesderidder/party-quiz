@@ -5,12 +5,11 @@ module.exports = {
     return homey.app.getWidgetStatus();
   },
 
-  async nextQuestion({ homey }) {
-    return homey.app.advanceQuizFromWidget();
+  async nextQuestion() {
+    throw new Error('Open het hostscherm en meld je aan als beheerder.');
   },
 
-  async startDefaultQuiz({ homey, body }) {
-    const quizId = body && body.quizId ? body.quizId : null;
-    return homey.app.startQuizFromWidget(quizId);
+  async startDefaultQuiz() {
+    throw new Error('Open het hostscherm en meld je aan als beheerder.');
   }
 };

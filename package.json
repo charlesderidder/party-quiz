@@ -1,7 +1,7 @@
 {
   "name": "com.homey.partyquiz",
   "version": "1.0.0",
-  "description": "Homey Party Quiz - Realtime Kahoot-stijl groepsquiz voor Homey Self-Hosted Server (SDK v3)",
+  "description": "Party Quiz - Realtime Kahoot-stijl groepsquiz voor Homey Self-Hosted Server (SDK v3)",
   "main": "app.js",
   "scripts": {
     "start": "node standalone-runner.js",

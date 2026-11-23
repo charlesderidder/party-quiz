@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Homey Party Quiz — Host / Hoofdscherm</title>
+  <title>Party Quiz — Host / Hoofdscherm</title>
   <link rel="stylesheet" href="/css/homey-style.css" />
+  <script src="/admin-navigation.js" defer></script>
   <style>
     .host-container {
       max-width: 1320px;
@@ -68,7 +69,7 @@
 
     .players-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
       gap: 12px;
       max-height: 360px;
       overflow-y: auto;
@@ -99,7 +100,19 @@
       gap: 10px;
       font-weight: 700;
       font-size: 15px;
-      overflow: hidden;
+      min-width: 0;
+    }
+
+    .player-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .podium-name {
+      max-width: 100%;
+      overflow: visible;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .player-avatar-dot {
@@ -124,7 +137,7 @@
 
     .question-hud {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
       align-items: center;
     }
@@ -137,6 +150,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
     }
 
     .hud-label {
@@ -151,6 +166,9 @@
       font-size: 28px;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
+      min-width: 7ch;
+      text-align: right;
+      white-space: nowrap;
     }
 
     .timer-progress-track {
@@ -199,6 +217,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
       padding: 12px 16px;
       border-radius: 16px;
       background: var(--surface-glass-strong);
@@ -209,6 +229,12 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      min-width: 0;
+    }
+
+    .lb-left > div {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .lb-pos {
@@ -241,6 +267,61 @@
         grid-template-columns: 1fr;
       }
     }
+
+    @media (min-width: 1200px) and (min-height: 700px) {
+      body.lobby-active {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+      }
+
+      .lobby-active .host-container {
+        width: 100%;
+        max-width: none;
+        flex: 1;
+        min-height: 0;
+        padding: 8px 24px 24px;
+      }
+
+      .lobby-active .lobby-grid {
+        flex: 1;
+        min-height: 0;
+        grid-template-columns: minmax(360px, 40%) minmax(0, 1fr);
+      }
+
+      .lobby-active .qr-panel, .lobby-active .players-panel { min-height: 0; }
+      .lobby-active .qr-box {
+        width: 100%;
+        min-height: 0;
+        flex: 1;
+      }
+      .lobby-active .qr-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .lobby-active .qr-tip { display: none; }
+      .lobby-active .players-panel > div:first-child {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      .lobby-active .players-grid {
+        flex: 1;
+        max-height: none;
+        align-content: start;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, clamp(300px, 21vw, 700px)), 1fr));
+      }
+      .lobby-active .player-chip-left { font-size: clamp(20px, 1.55vw, 56px); }
+      .lobby-active .player-avatar-dot {
+        width: clamp(52px, 4vw, 112px);
+        height: clamp(52px, 4vw, 112px);
+        font-size: clamp(26px, 2vw, 56px);
+      }
+    }
   </style>
 </head>
 <body class="theme-dark">
@@ -249,7 +330,7 @@
     <a href="/" class="homey-logo-group">
       <div class="homey-orb">Q</div>
       <div>
-        <div style="font-weight: 800; font-size: 18px; letter-spacing: -0.02em;">Homey Party Quiz</div>
+        <div style="font-weight: 800; font-size: 18px; letter-spacing: -0.02em;">Party Quiz</div>
         <div style="font-size: 12px; color: var(--text-muted);">TV &amp; Woonkamer Hoofdscherm • SDK v3</div>
       </div>
     </a>
@@ -257,6 +338,7 @@
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <select id="quizSelectDropdown" class="input-homey" style="width: auto; min-width: 240px; padding: 8px 14px; font-weight: 700;"></select>
       <button class="btn-homey btn-sm" id="btnAddBots" title="Voeg 4 demo-spelers toe om direct te testen">🤖 +4 Demo Spelers</button>
+      <button class="btn-homey btn-sm" id="btnClearPlayers">🗑️ Verwijder alle spelers</button>
       <button class="btn-homey btn-sm" id="btnToggleSound">🔊 Geluid Aan</button>
       <button class="btn-homey btn-sm" id="btnToggleTheme">☀️ Licht / Donker</button>
       <a href="/play" target="_blank" class="btn-homey btn-sm">📱 Open /play</a>
@@ -265,6 +347,14 @@
   </header>
 
   <main class="host-container">
+    <div id="hostStatus" role="status" hidden></div>
+    <div id="clearPlayersConfirm" class="glass-card" role="alert" hidden style="padding: 16px;">
+      <p>Alle spelers en hun scores verwijderen? Dit kan niet ongedaan worden gemaakt.</p>
+      <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+        <button id="btnConfirmClearPlayers" class="btn-homey btn-primary btn-sm" type="button">Alle spelers verwijderen</button>
+        <button id="btnCancelClearPlayers" class="btn-homey btn-sm" type="button">Annuleren</button>
+      </div>
+    </div>
     <!-- Live Homey Flow Trigger Ticker -->
     <div class="flow-ticker" id="flowTickerBar">
       <span style="font-weight: 800; color: var(--homey-blue);">⚡ Homey Flow Live:</span>
@@ -280,7 +370,7 @@
         </div>
         <div style="font-size: 13px; color: var(--text-muted);">Of ga in je mobiele browser naar:</div>
         <a id="playUrlLink" href="/play" target="_blank" class="join-url-pill">/play</a>
-        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+        <div class="qr-tip" style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
           🔔 Tip: Geef op je telefoon toestemming voor <strong>Web Push</strong> om na elke ronde je score en de Top 3 als pushmelding te ontvangen!
         </div>
       </div>
@@ -289,7 +379,7 @@
         <div>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap;">
             <div>
-              <h1 id="lobbyQuizTitle" style="font-size: 28px; font-weight: 900;">Homey Party Quiz</h1>
+              <h1 id="lobbyQuizTitle" style="font-size: 28px; font-weight: 900;">Party Quiz</h1>
               <p id="lobbyQuizDesc" style="color: var(--text-muted); font-size: 14.5px; margin-top: 4px;"></p>
             </div>
             <div class="glass-pill" style="font-size: 15px;">

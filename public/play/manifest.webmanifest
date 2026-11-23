@@ -1,0 +1,12 @@
+{
+  "name": "Party Quiz",
+  "short_name": "Party Quiz",
+  "start_url": "/play",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#00a4e8",
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

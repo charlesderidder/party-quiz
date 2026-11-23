@@ -318,7 +318,7 @@
         options: (q.options || []).map(o => String(o || '').trim())
       }));
 
-      const saved = await api('/api/quizzes', {
+      const { quiz: saved } = await api('/api/quizzes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draftQuiz)
@@ -441,7 +441,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: 'Test vanaf het Homey Party Quiz beheerpaneel — Top 3 wordt live bijgewerkt! 🏆'
+          message: 'Test vanaf het Party Quiz beheerpaneel — Top 3 wordt live bijgewerkt! 🏆'
         })
       });
       showAlert('🔔 Test Web Push verzonden naar alle geregistreerde spelers.');
@@ -538,7 +538,7 @@
     player_won: '👑 player_won'
   };
 
-  socket.on('flow_event', entry => {
+  function renderFlowEvent(entry) {
     if (!entry) return;
     const list = document.getElementById('flowEventsList');
     const tokensHtml = Object.entries(entry.tokens || {})
@@ -563,11 +563,13 @@
     `;
     list.prepend(item);
     while (list.children.length > 40) list.removeChild(list.lastChild);
-  });
+  }
+
+  socket.on('flow_event', renderFlowEvent);
 
   socket.on('quiz_state', state => {
     latestState = state;
-    if (state && state.flowHistory) {
+    if (state) {
       // Keep sidebar in sync with "Live" indicator
       renderSidebar();
     }
@@ -584,5 +586,11 @@
     }
     await loadQuizzes();
     await loadSettings();
+    try {
+      const { flowHistory } = await api('/api/flow/history');
+      flowHistory.reverse().forEach(renderFlowEvent);
+    } catch (err) {
+      showAlert(`❌ Flow-logboek laden mislukt: ${err.message}`, true);
+    }
   })();
 })();

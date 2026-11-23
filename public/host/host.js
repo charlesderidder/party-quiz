@@ -69,8 +69,8 @@
       const res = await fetch('/api/state');
       const data = await res.json();
       populateQuizDropdown(data.quizzes || [], data.quizId);
+      if (!currentState) renderState(data);
       await refreshQrCode(data.playUrl);
-      renderState(data);
     } catch (err) {
       console.error('Failed to load initial state:', err);
     }
@@ -112,6 +112,7 @@
   function renderState(state) {
     if (!state) return;
     currentState = state;
+    document.body.classList.toggle('lobby-active', state.phase === 'lobby');
 
     // Trigger subtle audio cues on phase change
     if (state.phase !== lastPhase) {
@@ -142,7 +143,7 @@
   }
 
   function renderLobby(state) {
-    document.getElementById('lobbyQuizTitle').textContent = state.quizTitle || 'Homey Party Quiz';
+    document.getElementById('lobbyQuizTitle').textContent = state.quizTitle || 'Party Quiz';
     document.getElementById('lobbyQuizDesc').textContent =
       state.quizDescription || `${state.totalQuestions} vragen klaar om te starten.`;
     document.getElementById('lobbyPlayerCount').textContent = state.totalPlayers || 0;
@@ -164,7 +165,7 @@
             <span class="player-avatar-dot" style="background: ${escapeHtml(p.color || '#00A4E8')}">
               ${escapeHtml(p.avatar || '🎉')}
             </span>
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</span>
+            <span class="player-name">${escapeHtml(p.name)}</span>
           </div>
           <button class="btn-homey btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="window.__kickPlayer('${escapeHtml(p.id)}')" title="Verwijder speler">✕</button>
         </div>
@@ -401,38 +402,72 @@
   });
 
   window.__kickPlayer = playerId => {
-    socket.emit('host_kick_player', { playerId });
+    adminAction('host_kick_player', { playerId });
   };
+
+  function adminAction(event, payload) {
+    const status = document.getElementById('hostStatus');
+    status.hidden = false;
+    if (!socket.connected) {
+      status.textContent = 'Geen verbinding met de quizserver. Start de app en laad de pagina opnieuw.';
+      return;
+    }
+    status.textContent = 'Bezig...';
+    socket.timeout(10000).emit(event, payload, (err, result) => {
+      if (err || !result || result.success === false) {
+        status.textContent = (result && result.error) || 'Beheeractie mislukt. Controleer de verbinding en probeer opnieuw.';
+      } else if (event === 'host_clear_players') {
+        status.textContent = `${result.removed} spelers verwijderd.`;
+      } else {
+        status.hidden = true;
+      }
+    });
+  }
 
   document.getElementById('quizSelectDropdown').addEventListener('change', e => {
     const quizId = e.target.value;
-    socket.emit('host_select_quiz', { quizId });
+    adminAction('host_select_quiz', { quizId });
   });
 
   document.getElementById('btnStartQuiz').addEventListener('click', () => {
     ensureAudio();
     const quizId = document.getElementById('quizSelectDropdown').value;
-    socket.emit('host_start_quiz', { quizId });
+    adminAction('host_start_quiz', { quizId });
   });
 
   document.getElementById('btnSkipQuestion').addEventListener('click', () => {
-    socket.emit('host_next_step', {});
+    adminAction('host_next_step', {});
   });
 
   document.getElementById('btnNextQuestion').addEventListener('click', () => {
-    socket.emit('host_next_step', {});
+    adminAction('host_next_step', {});
   });
 
   document.getElementById('btnRestartLobby').addEventListener('click', () => {
-    socket.emit('host_next_step', {});
+    adminAction('host_next_step', {});
   });
 
   document.getElementById('btnAddBots').addEventListener('click', async () => {
-    await fetch('/api/demo/add-bots', { method: 'POST' });
+    const res = await fetch('/api/demo/add-bots', { method: 'POST' });
+    if (!res.ok) alert((await res.json()).error || 'Beheeractie mislukt.');
+  });
+
+  document.getElementById('btnClearPlayers').addEventListener('click', () => {
+    document.getElementById('clearPlayersConfirm').hidden = false;
+  });
+
+  document.getElementById('btnCancelClearPlayers').addEventListener('click', () => {
+    document.getElementById('clearPlayersConfirm').hidden = true;
+  });
+
+  document.getElementById('btnConfirmClearPlayers').addEventListener('click', () => {
+    document.getElementById('clearPlayersConfirm').hidden = true;
+    adminAction('host_clear_players', {});
   });
 
   document.getElementById('btnBotAnswers').addEventListener('click', async () => {
-    await fetch('/api/demo/bot-answers', { method: 'POST' });
+    const res = await fetch('/api/demo/bot-answers', { method: 'POST' });
+    if (!res.ok) alert((await res.json()).error || 'Beheeractie mislukt.');
   });
 
   document.getElementById('btnToggleSound').addEventListener('click', e => {

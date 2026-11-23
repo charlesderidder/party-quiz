@@ -1,19 +1,21 @@
 'use strict';
 
 /**
- * End-to-end integratietest voor de Homey Party Quiz.
+ * End-to-end integratietest voor de Party Quiz.
  * Gebruikt de Socket.io / Engine.io polling-transport via HTTP (geen extra dependencies nodig).
  * Gebruikt de globale WebSocket uit Node 22+ indien aanwezig.
  */
 
-const BASE = 'http://127.0.0.1:3456';
+const BASE = process.env.PARTY_QUIZ_TEST_URL || 'http://127.0.0.1:3456';
+let adminCookie = '';
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
 async function api(path, options) {
-  const res = await fetch(BASE + path, options);
+  const headers = { ...((options && options.headers) || {}), ...(adminCookie ? { Cookie: adminCookie } : {}) };
+  const res = await fetch(BASE + path, { ...options, headers });
   const text = await res.text();
   let data = null;
   try {
@@ -24,9 +26,18 @@ async function api(path, options) {
   return { status: res.status, data };
 }
 
-const received = { quiz_state: [], timer_tick: [], flow_event: [], push_notification: [] };
+const received = { quiz_state: [], timer_tick: [], flow_event: [], push_notification: [], fastest_correct: [] };
 
 async function run() {
+  const password = process.env.PARTY_QUIZ_TEST_PASSWORD;
+  if (!password) throw new Error('Stel PARTY_QUIZ_TEST_PASSWORD in voor de aparte testinstantie.');
+  const login = await fetch(BASE + '/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  if (!login.ok) throw new Error(`Beheerder aanmelden mislukt: HTTP ${login.status}`);
+  adminCookie = login.headers.get('set-cookie').split(';')[0];
   const results = [];
   const check = (name, ok, extra = '') => {
     results.push({ name, ok, extra });
@@ -40,12 +51,18 @@ async function run() {
 
   // ---- 2. Socket.io client ----
   const { io } = require('socket.io-client');
-  const socket = io(BASE, { transports: ['websocket'] });
+  const socket = io(BASE, { transports: ['websocket'], extraHeaders: { Cookie: adminCookie } });
+  const playerObserver = io(BASE, { transports: ['websocket'] });
+  const publicFlowEvents = [];
+  const otherFastestEvents = [];
+  playerObserver.on('flow_event', event => publicFlowEvents.push(event));
+  playerObserver.on('fastest_correct', event => otherFastestEvents.push(event));
 
   socket.on('quiz_state', s => received.quiz_state.push(s));
   socket.on('timer_tick', t => received.timer_tick.push(t));
   socket.on('flow_event', e => received.flow_event.push(e));
   socket.on('push_notification', p => received.push_notification.push(p));
+  socket.on('fastest_correct', event => received.fastest_correct.push(event));
 
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('socket timeout')), 8000);
@@ -73,6 +90,8 @@ async function run() {
     )
   );
   check('Speler kan joinen via socket', joinRes.success === true, joinRes.player && joinRes.player.name);
+  const playerId = joinRes.player.id;
+  const playerSecret = joinRes.playerSecret;
 
   // ---- 5. Quiz starten ----
   const quizzes = (await api('/api/quizzes')).data.quizzes;
@@ -106,16 +125,17 @@ async function run() {
 
   // Speler moet eerst (opnieuw) joinen; state kan door eerdere stappen zijn gereset
   await new Promise(resolve =>
-    socket.emit('player_join', { playerId: 'test_sanne', name: 'Sanne', avatar: '🦄', color: '#8B5CF6' }, resolve)
+    socket.emit('player_join', { playerId, playerSecret, name: 'Sanne', avatar: '🦄', color: '#8B5CF6' }, resolve)
   );
 
   const ansCorrect = await new Promise(resolve =>
-    socket.emit('submit_answer', { playerId: 'test_sanne', answerIndex: correctIdx }, resolve)
+    socket.emit('submit_answer', { playerId, answerIndex: correctIdx }, resolve)
   );
   check('Correct antwoord geaccepteerd', ansCorrect.accepted === true, `+${ansCorrect.pointsEarned || '?'} pt`);
+  check('Snelste speler wordt pas bij de uitslag gemeld', received.fastest_correct.length === 0);
 
   const ansDup = await new Promise(resolve =>
-    socket.emit('submit_answer', { playerId: 'test_sanne', answerIndex: wrongIdx }, resolve)
+    socket.emit('submit_answer', { playerId, answerIndex: wrongIdx }, resolve)
   );
   check('Tweede antwoord geweigerd', ansDup.accepted === false, ansDup.reason || '');
 
@@ -132,6 +152,8 @@ async function run() {
     st = (await api('/api/control/next', { method: 'POST' })).data.state;
   }
   check('Naar tussenstand (reveal)', st.phase === 'reveal', `fase=${st.phase}`);
+  check('Alleen de snelste juiste speler ontvangt een geluidssignaal',
+    received.fastest_correct.length === 1 && otherFastestEvents.length === 0);
   check('Juiste antwoord zichtbaar in reveal', st.question.correctIndex === correctIdx);
   check('Top 3 gevuld', st.top3.length === 3, st.top3.map(p => `${p.name}:${p.score}`).join(', '));
   check(
@@ -157,13 +179,13 @@ async function run() {
   check('Volgende vraag gestart', q2.phase === 'question' && q2.currentQuestionIndex === 1, `fase=${q2.phase}, idx=${q2.currentQuestionIndex}`);
 
   // ---- 9. Bonuspunten (DAN-actie give_bonus_points) ----
-  const before = (await api('/api/state')).data.leaderboard.find(p => p.id === 'test_sanne');
+  const before = (await api('/api/state')).data.leaderboard.find(p => p.id === playerId);
   const bonus = await api('/api/control/bonus', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ playerId: 'test_sanne', points: 250 })
+    body: JSON.stringify({ playerId, points: 250 })
   });
-  const after = bonus.data.state.leaderboard.find(p => p.id === 'test_sanne');
+  const after = bonus.data.state.leaderboard.find(p => p.id === playerId);
   check('Bonuspunten toegekend', after.score === before.score + 250, `${before.score} → ${after.score}`);
 
   // ---- 10. EN-condities ----
@@ -179,7 +201,7 @@ async function run() {
     const r = await api('/api/flow/evaluate-condition', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conditionId: cond, playerId: 'test_sanne' })
+      body: JSON.stringify({ conditionId: cond, playerId })
     });
     check(`EN-conditie ${cond}`, r.status === 200 && typeof r.data.result === 'boolean', String(r.data.result));
   }
@@ -197,6 +219,7 @@ async function run() {
   check('Quiz eindigt in finished-fase', fin.phase === 'finished');
   await sleep(400);
   check('player_won trigger afgevuurd', received.flow_event.some(f => f.triggerId === 'player_won'));
+  check('Flow-logboek is niet publiek', publicFlowEvents.length === 0);
 
   // ---- 12. CRUD ----
   const newQuiz = {
@@ -247,7 +270,7 @@ async function run() {
     csvImport.data.quiz ? `${csvImport.data.quiz.questions.length} vragen` : JSON.stringify(csvImport.data)
   );
 
-  const sampleXlsx = await fetch(BASE + '/api/samples/xlsx').then(r => r.arrayBuffer());
+  const sampleXlsx = await fetch(BASE + '/api/samples/xlsx', { headers: { Cookie: adminCookie } }).then(r => r.arrayBuffer());
   form = new FormData();
   form.append('file', new Blob([sampleXlsx]), 'voorbeeld.xlsx');
   const xlsxImport = await api('/api/import', { method: 'POST', body: form });
@@ -257,7 +280,7 @@ async function run() {
     xlsxImport.data.quiz ? `${xlsxImport.data.quiz.questions.length} vragen` : JSON.stringify(xlsxImport.data)
   );
 
-  const sampleJson = await fetch(BASE + '/api/samples/json').then(r => r.text());
+  const sampleJson = await fetch(BASE + '/api/samples/json', { headers: { Cookie: adminCookie } }).then(r => r.text());
   form = new FormData();
   form.append('file', new Blob([sampleJson], { type: 'application/json' }), 'voorbeeld.json');
   const jsonImport = await api('/api/import', { method: 'POST', body: form });
@@ -293,7 +316,8 @@ async function run() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      playerId: 'test_sanne',
+      playerId,
+      playerSecret,
       subscription: {
         endpoint: 'https://fcm.googleapis.com/fcm/send/FAKE-ENDPOINT-FOR-TEST',
         keys: { p256dh: 'BFakeKey', auth: 'FakeAuth' }
@@ -323,7 +347,7 @@ async function run() {
   const rejoin = await new Promise(resolve =>
     socket.emit(
       'player_join',
-      { playerId: 'test_sanne', name: 'Sanne', avatar: '🦄', color: '#8B5CF6' },
+      { playerId, playerSecret, name: 'Sanne', avatar: '🦄', color: '#8B5CF6' },
       resolve
     )
   );
@@ -336,6 +360,7 @@ async function run() {
   );
 
   socket.close();
+  playerObserver.close();
 
   const failed = results.filter(r => !r.ok);
   console.log('\n============================================');

@@ -1,14 +1,15 @@
 {
+  "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homey.partyquiz",
   "version": "1.0.0",
-  "compatibility": ">=12.0.0",
+  "compatibility": ">=12.3.0",
   "sdk": 3,
   "platforms": [
     "local"
   ],
   "name": {
-    "nl": "Homey Party Quiz",
-    "en": "Homey Party Quiz"
+    "nl": "Party Quiz",
+    "en": "Party Quiz"
   },
   "description": {
     "nl": "Interactieve Kahoot-stijl groepsquiz met Web Push notificaties, live scorebord en Homey Flows voor Homey Self-Hosted Server.",
@@ -26,10 +27,20 @@
     "xlarge": "/assets/images/xlarge.png"
   },
   "author": {
-    "name": "Homey Party Quiz Dev",
+    "name": "Party Quiz Dev",
     "email": "dev@homeypartyquiz.local"
   },
   "api": {
+    "getAdminData": {
+      "method": "POST",
+      "path": "/settings/access",
+      "public": false
+    },
+    "setAdminPassword": {
+      "method": "POST",
+      "path": "/settings/password",
+      "public": false
+    },
     "getState": {
       "method": "GET",
       "path": "/state",
@@ -38,6 +49,26 @@
     "getQuizzes": {
       "method": "GET",
       "path": "/quizzes",
+      "public": false
+    },
+    "getSettings": {
+      "method": "GET",
+      "path": "/settings",
+      "public": false
+    },
+    "saveSettings": {
+      "method": "POST",
+      "path": "/settings",
+      "public": false
+    },
+    "testPush": {
+      "method": "POST",
+      "path": "/settings/push/test",
+      "public": false
+    },
+    "regenerateVapid": {
+      "method": "POST",
+      "path": "/settings/push/regenerate",
       "public": false
     },
     "saveQuiz": {
@@ -64,7 +95,6 @@
   "flow": {
     "triggers": [
       {
-        "id": "player_answered_correct",
         "title": {
           "nl": "Een speler een goed antwoord heeft gegeven",
           "en": "A player answered correctly"
@@ -115,10 +145,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_answered_correct"
       },
       {
-        "id": "player_answered_wrong",
         "title": {
           "nl": "Een speler een fout antwoord heeft gegeven",
           "en": "A player answered incorrectly"
@@ -169,10 +199,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_answered_wrong"
       },
       {
-        "id": "player_entered_top3",
         "title": {
           "nl": "Een speler in de top 3 zit",
           "en": "A player is in the top 3"
@@ -227,10 +257,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_entered_top3"
       },
       {
-        "id": "player_is_first",
         "title": {
           "nl": "Een speler op de 1e plek staat",
           "en": "A player is in 1st place"
@@ -281,10 +311,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_is_first"
       },
       {
-        "id": "player_left_top3",
         "title": {
           "nl": "Een speler buiten de top 3 valt",
           "en": "A player falls outside the top 3"
@@ -335,10 +365,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_left_top3"
       },
       {
-        "id": "player_rank_up",
         "title": {
           "nl": "Een speler is gestegen in positie",
           "en": "A player moved up in rank"
@@ -389,10 +419,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_rank_up"
       },
       {
-        "id": "player_won",
         "title": {
           "nl": "Een speler heeft gewonnen",
           "en": "A player has won the quiz"
@@ -447,10 +477,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "player_won"
       },
       {
-        "id": "question_asked",
         "title": {
           "nl": "Een nieuwe vraag wordt gesteld",
           "en": "A new question is asked"
@@ -487,10 +517,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "question_asked"
       },
       {
-        "id": "question_time_up",
         "title": {
           "nl": "De tijd voor een vraag voorbij is",
           "en": "Time for a question is up"
@@ -527,10 +557,10 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "question_time_up"
       },
       {
-        "id": "quiz_started",
         "title": {
           "nl": "Een nieuwe quiz start",
           "en": "A new quiz starts"
@@ -549,12 +579,12 @@
             },
             "example": "Vrijdagmiddag Borrel Quiz"
           }
-        ]
+        ],
+        "id": "quiz_started"
       }
     ],
     "conditions": [
       {
-        "id": "did_player_rank_up",
         "title": {
           "nl": "Speler !{{is|is niet}} gestegen in positie",
           "en": "Player !{{did|did not}} move up in rank"
@@ -576,10 +606,10 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "did_player_rank_up"
       },
       {
-        "id": "is_last_answer_correct",
         "title": {
           "nl": "Laatste antwoord van speler !{{was|was niet}} goed",
           "en": "Last answer of player !{{was|was not}} correct"
@@ -601,10 +631,10 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "is_last_answer_correct"
       },
       {
-        "id": "is_last_answer_wrong",
         "title": {
           "nl": "Laatste antwoord van speler !{{was|was niet}} fout",
           "en": "Last answer of player !{{was|was not}} wrong"
@@ -626,10 +656,10 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "is_last_answer_wrong"
       },
       {
-        "id": "is_player_first",
         "title": {
           "nl": "Speler !{{staat|staat niet}} op de 1e plek",
           "en": "Player !{{is|is not}} in 1st place"
@@ -651,10 +681,10 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "is_player_first"
       },
       {
-        "id": "is_player_in_top3",
         "title": {
           "nl": "Speler !{{zit|zit niet}} in de top 3",
           "en": "Player !{{is|is not}} in the top 3"
@@ -676,10 +706,10 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "is_player_in_top3"
       },
       {
-        "id": "is_player_outside_top3",
         "title": {
           "nl": "Speler !{{valt|valt niet}} buiten de top 3",
           "en": "Player !{{is|is not}} outside the top 3"
@@ -701,10 +731,10 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "is_player_outside_top3"
       },
       {
-        "id": "is_player_winner",
         "title": {
           "nl": "Speler !{{is|is niet}} de winnaar",
           "en": "Player !{{is|is not}} the winner"
@@ -726,12 +756,12 @@
               "en": "Select player or use trigger context"
             }
           }
-        ]
+        ],
+        "id": "is_player_winner"
       }
     ],
     "actions": [
       {
-        "id": "give_bonus_points",
         "title": {
           "nl": "Geef speler bonuspunten",
           "en": "Give player bonus points"
@@ -768,10 +798,10 @@
               "en": "E.g. 250"
             }
           }
-        ]
+        ],
+        "id": "give_bonus_points"
       },
       {
-        "id": "next_question",
         "title": {
           "nl": "Ga naar de volgende vraag",
           "en": "Go to the next question"
@@ -779,10 +809,10 @@
         "hint": {
           "nl": "Schakelt direct door naar de volgende vraag of het tussenstand-podium.",
           "en": "Advances immediately to the next question or leaderboard podium."
-        }
+        },
+        "id": "next_question"
       },
       {
-        "id": "send_push_all",
         "title": {
           "nl": "Verstuur web-push notificatie naar alle spelers",
           "en": "Send web-push notification to all players"
@@ -804,10 +834,10 @@
               "en": "E.g. Time for the final round!"
             }
           }
-        ]
+        ],
+        "id": "send_push_all"
       },
       {
-        "id": "send_push_player",
         "title": {
           "nl": "Verstuur web-push notificatie naar een speler",
           "en": "Send web-push notification to a player"
@@ -841,10 +871,10 @@
               "en": "E.g. Great job, you are in the lead!"
             }
           }
-        ]
+        ],
+        "id": "send_push_player"
       },
       {
-        "id": "start_quiz",
         "title": {
           "nl": "Start een quiz",
           "en": "Start a quiz"
@@ -866,7 +896,8 @@
               "en": "Choose a saved quiz"
             }
           }
-        ]
+        ],
+        "id": "start_quiz"
       }
     ]
   },
@@ -902,7 +933,8 @@
           "method": "POST",
           "path": "/start"
         }
-      }
+      },
+      "id": "quiz-status"
     }
   }
 }

@@ -1,4 +1,4 @@
-# 🎉 Homey Party Quiz — Homey SDK v3 App
+# 🎉 Party Quiz — Homey SDK v3 App
 
 Een complete, productieklare **Kahoot-stijl groepsquiz** als Homey-app (SDK v3), geoptimaliseerd voor
 **Homey Self-Hosted Server (SHS)** op Proxmox / Linux / Docker / Synology.
@@ -16,9 +16,10 @@ homey-party-quiz/
 ├── api.js                            # Homey Web API (SDK v3) endpoints
 ├── app.json                          # Gecompileerd manifest (npm run build:manifest)
 ├── package.json
+├── assets/images/                    # Appafbeeldingen voor installatie en appoverzicht
 ├── standalone-runner.js              # Draai de app lokaal zonder Homey (dev/preview)
 ├── .homeycompose/
-│   ├── app.json                      # Basis-manifest (sdk 3, compatibility >=12.0.0)
+│   ├── app.json                      # Basis-manifest (sdk 3, compatibility >=12.3.0)
 │   └── flow/
 │       ├── triggers/                 # 10 ALS-kaarten
 │       │   ├── quiz_started.json
@@ -52,6 +53,7 @@ homey-party-quiz/
 ├── widgets/quiz-status/              # Officiële Homey Dashboard Widget
 │   ├── widget.compose.json
 │   ├── api.js
+│   ├── preview-{light,dark}.png      # Widgetvoorvertoningen voor Homey
 │   └── public/{index.html,icon.svg}
 ├── public/
 │   ├── index.html                    # Overzicht / hub
@@ -64,7 +66,7 @@ homey-party-quiz/
 ├── userdata/quizzes.json             # Startquizzen (NL)
 ├── locales/{nl,en}.json
 ├── scripts/build-manifest.js         # .homeycompose + widgets → app.json
-└── scripts/e2e-test.js               # 44 end-to-end integratietests
+└── scripts/e2e-test.js               # end-to-end integratietests
 ```
 
 ---
@@ -76,8 +78,21 @@ npm install
 npm start                 # → http://localhost:3456
 ```
 
+Bij zelfstandig gebruik is beheer pas toegankelijk nadat bij de eerste start de
+omgevingsvariabele `PARTY_QUIZ_ADMIN_PASSWORD` is ingesteld op een uniek wachtwoord van
+minimaal 12 tekens. In PowerShell:
+
+```powershell
+$env:PARTY_QUIZ_ADMIN_PASSWORD = Read-Host "Eerste beheerderswachtwoord"
+npm start
+```
+
+De variabele wordt alleen gebruikt als nog geen wachtwoord is opgeslagen. Verwijder haar
+na de eerste start uit de omgeving; wijzig het wachtwoord daarna via `/settings`.
+
 | URL | Functie |
 | --- | --- |
+| `http://<ip>:3456/` | Welkomstpagina voor spelers |
 | `http://<ip>:3456/host` | TV / hoofdschema (QR-lobby) |
 | `http://<ip>:3456/play` | Spelersscherm (mobiel) |
 | `http://<ip>:3456/admin` | Beheer & quiz-editor |
@@ -90,6 +105,8 @@ npm start                 # → http://localhost:3456
 ---
 
 ## 3. Installatie op Homey Self-Hosted Server (SHS)
+
+De widget vereist Homey softwareversie 12.3.0 of hoger.
 
 ```bash
 # 1. Homey CLI (eenmalig)
@@ -115,6 +132,35 @@ De Homey-app start na `onInit()` automatisch de webserver op **poort 3456** (`0.
 ### Poort / URL aanpassen
 - Poort: `PORT`-omgevingsvariabele of via **Instellingen → Webserver poort**.
 - Publieke URL (reverse proxy): **`/admin` → tab “HTTPS, Reverse Proxy & Web Push”** of `/settings`.
+- De knop **Configureren** in Homey opent dezelfde instellingen via de Homey App API.
+- Kies de **standaardquiz** in de appinstellingen. De keuze wordt bij opstarten geladen
+  en direct toegepast als de quiz in de lobby staat; een lopende quiz blijft ongewijzigd.
+
+---
+
+### Beheerdersbeveiliging
+
+Stel bij Homey-installatie direct een beheerderswachtwoord in via **Configureren** in
+de appinstellingen. Totdat dit is gebeurd is webbeheer uitgeschakeld. De eerste
+configuratie via de Homey API is bereikbaar voor Homey-gebruikers en apps met toegang
+tot deze app; beperk die toegang en stel het wachtwoord meteen in. Daarna is ook voor
+de Homey-beheer-API het beheerderswachtwoord vereist. In de Homey-instellingen vul je
+het huidige wachtwoord in en kies je **Instellingen ontgrendelen**.
+
+Spelers gebruiken `/play` zonder beheerderswachtwoord; `/host`, `/admin`, `/settings`,
+beheer-API's en spelbediening vereisen een beheerderssessie. Het wachtwoord wordt als
+gezouten scrypt-hash opgeslagen. Aanmeldpogingen zijn beperkt; sessies vervallen na
+acht uur en worden ingetrokken bij een wachtwoordwijziging. Via **Afmelden** beëindig
+je de websessie. Spelersherstel gebruikt een afzonderlijk geheim in de browser.
+Na het aanmelden bieden de tabbladen bovenaan snelle toegang tot de webpagina's; ze
+zijn niet zichtbaar voor spelers zonder beheerderssessie. **Afmelden** staat in deze
+navigatie en beëindigt de beheerderssessie; de spelersreset is daarvan onafhankelijk.
+
+**Gebruik HTTPS voor aanmelden en beheer**, ook op het lokale netwerk. De ingebouwde
+webserver spreekt HTTP; plaats hem achter een HTTPS-reverse-proxy en scherm de directe
+HTTP-poort af voor onbevoegden. Zonder HTTPS kunnen wachtwoorden en sessies worden
+afgeluisterd. Bescherm ook Homey-toegang en lokale opslag: Homey-beheerders en andere
+processen met toegang tot de opslag blijven vertrouwd.
 
 ---
 
@@ -176,7 +222,10 @@ en `/play` (teller + decaying gauge).
 
 ### 📺 `/host`
 - Groot auto-gegenereerd **QR-code** in de lobby (verwijst naar `/play` met juiste IP/domein).
+- Op grote schermen benut de lobby de beschikbare schermruimte voor QR-code en spelers.
 - Live spelerslijst (Socket.io), kick-speler, quizkeuze-dropdown.
+- **Verwijder alle spelers** verwijdert na bevestiging alle huidige spelers, hun scores
+  en serverabonnementen voor push. Verwijderde spelers moeten zich opnieuw aanmelden.
 - Vraagweergave: afteltimer-balk, **live punten-teller die aftelt**, 4 gekleurde antwoordtegels
   met iconen (▲ ◆ ● ■), live antwoordteller.
 - Na elke vraag: **geanimeerd Top 3-podium** + volledige ranglijst met **stijgers (▲) en dalers (▼)**.
@@ -186,10 +235,28 @@ en `/play` (teller + decaying gauge).
 ### 📱 `/play`
 - Mobile-first login: unieke naam, avatar (8 emoji's), Homey-tegelkleur (6 kleuren).
 - Web Push-toestemming + Service Worker-registratie (VAPID-key uit `/api/vapid-public-key`).
-- **Sessieherstel**: `localStorage` + unieke `playerId`; bij refresh automatisch weer in het spel
-  met behoud van score en positie.
+- **Sessieherstel**: `localStorage` met een apart spelergeheim; bij refresh automatisch weer in het spel
+  met behoud van score en positie zolang de app draait. Bij tijdelijk verbindingsverlies
+  worden antwoorden pas weer aangeboden nadat de speler opnieuw is aangemeld.
+- **Reset** beëindigt de spelerssessie, verwijdert het opgeslagen profiel en toont opnieuw
+  het lege aanmeldscherm, ook in andere open tabbladen van die speler. Het pushabonnement
+  wordt op de server ontkoppeld. De bestaande score blijft op het scorebord staan, maar
+  is niet meer te herstellen. Andere browsergegevens en browsertoestemmingen blijven behouden.
+  Een verbinding met de server is nodig om een bestaande sessie te beëindigen.
+- Reset en spelers verwijderen vragen bevestiging op de pagina zelf en tonen een fout
+  wanneer de quizserver niet bereikbaar is.
 - 4 grote Homey-tegel antwoordknoppen, directe visuele bevestiging (“beantwoord op 1.2s”).
-- Na de ronde: goed/fout, verdiende punten, huidige plek (met ▲/▼), achterstand op #1 en de Top 3.
+- Na de ronde: goed/fout, verdiende punten, huidige plek (met ▲/▼), achterstand op #1,
+  de Top 3 en de volledige ranglijst. Na de laatste vraag toont de host de eindstand;
+  zodra die is geopend, zien spelers hun eindpositie en volledige eindranglijst.
+- **Test / Activeer Web Push** in de lobby registreert push en verstuurt een testmelding
+  uitsluitend naar die speler. Fouten en geweigerde toestemming worden getoond. Push
+  vereist HTTPS, een ondersteunde browser en toestemming; op iOS is een aan het
+  beginscherm toegevoegde webapp vereist. Succes betekent dat de pushdienst de melding
+  heeft aangenomen, niet dat het toestel haar gegarandeerd heeft getoond.
+- Bij de uitslag hoort de eerste speler met een juist antwoord een geluidje op de telefoon.
+  De volgorde wordt bepaald door ontvangst op de server. Houd de spelerspagina open en het
+  telefoongeluid aan; browser- en toestelinstellingen kunnen geluid blokkeren.
 - Elke ronde automatisch een Web Push (of in-app banner): goed/fout, positie, punten en de Top 3.
 
 ### ⚙️ `/admin` (en Homey App Settings)
@@ -239,15 +306,15 @@ en `/play` (teller + decaying gauge).
 ## 8. Dashboard Widget
 
 `widgets/quiz-status` toont live: vraagnummer (bijv. 3/5), aantal spelers, de Top 3 met scores en
-rangverschil, plus knoppen **➡️ Volgende vraag** en **📺 Open hostscherm**.
+rangverschil en een knop **📺 Open hostscherm**. Spelbediening verloopt via het
+beveiligde hostscherm, niet rechtstreeks vanuit de widget.
+Bij een verbindingsfout toont de widget een foutmelding in plaats van een lege spelerslijst.
 
 API (`widget.compose.json`):
 
 | Functie | Methode | Pad |
 | --- | --- | --- |
 | `getStatus` | GET | `/` |
-| `nextQuestion` | POST | `/next` |
-| `startDefaultQuiz` | POST | `/start` |
 
 ---
 
@@ -258,6 +325,9 @@ GET  /api/state                       live gamestate + quizzen + URL's
 GET  /api/qr[?url=…]                  QR-code als data-URL
 GET  /api/vapid-public-key            VAPID public key
 POST /api/push/subscribe              pushabonnement opslaan
+POST /api/push/player-test            eigen testpush met spelergeheim
+POST /api/player/reset                eigen spelerssessie beëindigen
+POST /api/login · POST /api/logout    beheerderssessie starten/beëindigen
 POST /api/push/test                   testpush (speler of iedereen)
 POST /api/push/regenerate-vapid       nieuwe VAPID-keys
 GET  /api/quizzes                     alle quizzen
@@ -265,15 +335,21 @@ POST /api/quizzes                     quiz opslaan (nieuw of bestaand)
 DELETE /api/quizzes/:id               quiz verwijderen
 POST /api/import                      .xlsx/.csv/.json upload (multipart)
 GET  /api/samples/{xlsx|csv|json}     voorbeeldbestand downloaden
-GET  /api/settings  ·  POST /api/settings
+GET  /api/settings  ·  POST /api/settings · POST /api/settings/password
 POST /api/control/{select-quiz|start|next|bonus}
 POST /api/flow/evaluate-condition      EN-conditie testen
+GET  /api/flow/history                 beheerderslogboek
 GET  /api/widget/status · POST /api/widget/next
 ```
 
 Socket.io-events: `quiz_state`, `timer_tick`, `flow_event`, `push_notification`,
 `player_join`, `submit_answer`, `host_start_quiz`, `host_next_step`, `host_select_quiz`,
-`host_kick_player`.
+`host_kick_player`, `host_clear_players`, `player_removed`, `player_reset`, `player_session_ended`.
+
+Alleen status, QR, de publieke VAPID-sleutel, widgetstatus en de spelers-API's voor
+push en sessiebeëindiging zijn publiek. Overige web-API's en host-events vereisen een beheerderssessie.
+Pushregistratie en de eigen testpush vereisen het spelergeheim; registratie accepteert uitsluitend ondersteunde
+HTTPS-pushproviders. De Homey-beheer-API verwacht `adminPassword` in de POST-body.
 
 ---
 
@@ -285,9 +361,10 @@ Socket.io-events: `quiz_state`, `timer_tick`, `flow_event`, `push_notification`,
 | VAPID-keys | `Homey.settings['vapidKeys']` (automatisch gegenereerd bij 1e start) |
 | Pushabonnementen | `Homey.settings['pushSubscriptions']` |
 | Server/HTTPS-instellingen | `Homey.settings['serverConfig']` |
+| Beheerderswachtwoord | `Homey.settings['adminPasswordHash']` (gezouten hash) |
 
 Het bestand `userdata/homey-settings.json` bevat lokale instellingen, waaronder VAPID-sleutels
-en pushabonnementen, en wordt daarom niet in Git opgenomen. `userdata/quizzes.json` bevat de
+en pushabonnementen, en wordt daarom niet in Git of het Homey-installatiepakket opgenomen. `userdata/quizzes.json` bevat de
 startquizzen en kan tijdens lokaal gebruik worden aangepast; controleer wijzigingen voordat je ze publiceert.
 
 ---
@@ -295,11 +372,15 @@ startquizzen en kan tijdens lokaal gebruik worden aangepast; controleer wijzigin
 ## 11. Tests
 
 ```bash
+node --test scripts/player-sound-test.js scripts/security-test.js scripts/settings-test.js scripts/quiz-engine-test.js
 npm start                      # in terminal 1
-node scripts/e2e-test.js       # in terminal 2
+node scripts/e2e-test.js       # in terminal 2, met PARTY_QUIZ_TEST_PASSWORD
 ```
 
-44 integratietests dekken: Socket.io-verbinding, joinen, tijdscores (1000 → 0), dubbele
+De integratietest past quizzen, instellingen en pushabonnementen aan; draai hem alleen tegen
+een aparte testinstantie, niet tegen een Homey met echte gebruikersgegevens.
+
+De integratietests dekken: Socket.io-verbinding, joinen, tijdscores (1000 → 0), dubbele
 antwoorden weigeren, live antwoordteller, reveal, podium/rankdelta's, alle Flow-triggers,
 EN-condities, bonuspunten, einde quiz + `player_won`, CRUD, import van alle 3 formaten,
 instellingen/QR-URL, VAPID en sessieherstel.

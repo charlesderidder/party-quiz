@@ -19,7 +19,7 @@
       },
       {
         "id": "q_smarthome_2",
-        "question": "Hoeveel punten verdien je in Homey Party Quiz als je binnen de allereerste seconde goed antwoordt?",
+        "question": "Hoeveel punten verdien je in Party Quiz als je binnen de allereerste seconde goed antwoordt?",
         "options": [
           "500 punten",
           "750 punten",

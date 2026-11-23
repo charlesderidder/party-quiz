@@ -2,9 +2,11 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Homey Party Quiz — Speler</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Party Quiz — Speler</title>
+  <link rel="manifest" href="/play/manifest.webmanifest" />
   <link rel="stylesheet" href="/css/homey-style.css" />
+  <script src="/admin-navigation.js" defer></script>
   <style>
     .play-shell {
       max-width: 520px;
@@ -16,12 +18,63 @@
       gap: 16px;
     }
 
+    body.gameplay-active {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+    }
+
+    .gameplay-active .play-shell {
+      width: 100%;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .gameplay-active #screenGameplay {
+      min-height: 0;
+    }
+
+    .gameplay-active #questionCard {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
     .player-header {
       padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
+    }
+
+    .player-identity {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 0;
+    }
+
+    .player-identity .homey-orb { flex-shrink: 0; }
+
+    .player-details {
+      min-width: 0;
+    }
+
+    #headerPlayerName, #headerPushStatus {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
     }
 
     .avatar-picker, .color-picker {
@@ -67,27 +120,39 @@
     /* Mobile Homey Answer Tiles */
     .mobile-answer-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      flex: 1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      flex: 1 1 0;
+      min-height: 100px;
     }
 
     .mobile-tile {
-      min-height: 132px;
-      border-radius: 24px;
+      min-width: 0;
+      min-height: 0;
+      border-radius: 18px;
       border: none;
       color: #fff;
-      padding: 18px;
+      padding: 10px;
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       align-items: flex-start;
-      font-size: 17px;
+      align-items: safe center;
+      gap: 8px;
+      font-size: 15px;
       font-weight: 800;
       text-align: left;
+      overflow-wrap: anywhere;
+      overflow: auto;
       cursor: pointer;
       position: relative;
       transition: transform 0.12s ease, filter 0.15s ease, opacity 0.2s ease;
+    }
+
+    .mobile-tile .answer-shape {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      font-size: 15px;
     }
 
     .mobile-tile:active:not(:disabled) {
@@ -110,6 +175,31 @@
       margin: 0 auto 12px;
       box-shadow: var(--shadow-soft);
     }
+
+    @media (max-width: 420px) {
+      .player-actions { gap: 4px; }
+      .player-actions .glass-pill, .player-actions .btn-sm {
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+    }
+
+    @media (max-height: 500px) {
+      .play-shell { padding: 8px; gap: 8px; }
+      .player-header { padding: 8px 12px; }
+      .mobile-answer-grid { gap: 8px; }
+      .mobile-tile { padding: 8px; }
+      #screenGameplay { gap: 8px !important; }
+      #questionCard { padding: 10px 12px !important; }
+      #lockedAnswerCard { padding: 8px !important; }
+      #lockedAnswerCard > div:first-child { display: none; }
+    }
+
+    @media (max-height: 400px) {
+      .mobile-answer-grid { min-height: 80px; }
+      #lockedAnswerCard { padding: 4px !important; }
+      #lockedSub { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -125,19 +215,29 @@
   <div class="play-shell">
     <!-- Top Status Header -->
     <header class="glass-card player-header">
-      <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="player-identity">
         <div id="headerAvatar" class="homey-orb" style="width: 38px; height: 38px; font-size: 18px;">🎉</div>
-        <div>
+        <div class="player-details">
           <div id="headerPlayerName" style="font-weight: 800; font-size: 15px;">Welkom bij Party Quiz</div>
           <div id="headerPushStatus" style="font-size: 11.5px; color: var(--text-muted);">Kies je naam om mee te doen</div>
         </div>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div class="player-actions">
         <div id="headerRankBadge" class="glass-pill" style="display: none;">#1</div>
         <div id="headerScoreBadge" class="glass-pill" style="color: var(--homey-blue); display: none;">0 pt</div>
+        <button id="btnResetPlayer" class="btn-homey btn-sm" type="button">Reset</button>
       </div>
     </header>
+
+    <div id="resetConfirm" class="glass-card" role="alert" hidden style="padding: 16px;">
+      <p>Je sessie wordt beëindigd en je profiel gewist op alle open tabbladen. Je score blijft op het scorebord staan en kan niet meer worden hersteld.</p>
+      <p id="resetError" role="alert" hidden style="color: var(--homey-rose); margin-top: 8px;"></p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+        <button id="btnConfirmReset" type="button" class="btn-homey btn-primary btn-sm">Sessie beëindigen</button>
+        <button id="btnCancelReset" type="button" class="btn-homey btn-sm">Annuleren</button>
+      </div>
+    </div>
 
     <!-- 1. JOIN / LOGIN SCREEN -->
     <section id="screenJoin" class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
@@ -173,6 +273,7 @@
       </div>
 
       <button id="btnJoinGame" class="btn-homey btn-primary btn-lg" style="width: 100%;">🚀 Neem deel aan Quiz</button>
+      <p style="font-size: 12px; color: var(--text-muted);">Zet het geluid van je telefoon aan: bij de uitslag hoor je een geluidje als jij het snelst juist antwoordde.</p>
     </section>
 
     <!-- 2. WAITING IN LOBBY SCREEN -->
@@ -180,7 +281,7 @@
       <div style="font-size: 48px;">🎉</div>
       <h2 style="font-size: 22px; font-weight: 900;">Je zit in de lobby!</h2>
       <p style="font-size: 14px; color: var(--text-muted);">
-        Kijk naar het hoofdscherm (<strong id="lobbyQuizNameText">Homey Party Quiz</strong>). Zodra de host start, verschijnen hier direct de 4 antwoordtegels!
+        Kijk naar het hoofdscherm (<strong id="lobbyQuizNameText">Party Quiz</strong>). Zodra de host start, verschijnen hier direct de 4 antwoordtegels!
       </p>
 
       <div style="background: var(--surface-subtle); border-radius: 16px; padding: 14px; font-size: 13px; color: var(--text-muted);">
@@ -193,9 +294,14 @@
       </div>
     </section>
 
+    <section id="screenReconnect" class="glass-card" style="padding: 28px 22px; text-align: center; display: none; flex-direction: column; gap: 12px;">
+      <h2>Verbinding herstellen</h2>
+      <p>Even geduld, je wordt opnieuw aangemeld bij de quiz.</p>
+    </section>
+
     <!-- 3. ACTIVE QUESTION GAMEPLAY SCREEN -->
     <section id="screenGameplay" style="display: none; flex-direction: column; gap: 14px; flex: 1;">
-      <div class="glass-card" style="padding: 16px 18px;">
+      <div id="questionCard" class="glass-card" style="padding: 16px 18px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <span class="glass-pill" id="playQuestionCounter" style="font-size: 12px;">Vraag 1</span>
           <span class="glass-pill" style="color: var(--homey-amber); font-weight: 900;">
@@ -243,10 +349,14 @@
       </div>
 
       <div style="text-align: left; background: var(--surface-subtle); padding: 14px 16px; border-radius: 18px;">
-        <div style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
+        <div id="resultTop3Title" style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
           🏆 Huidige Top 3
         </div>
         <div id="resultTop3List" style="display: flex; flex-direction: column; gap: 6px; font-size: 13.5px;"></div>
+      </div>
+      <div style="text-align: left; background: var(--surface-subtle); padding: 14px 16px; border-radius: 18px;">
+        <h3 id="resultLeaderboardTitle" style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Volledige ranglijst</h3>
+        <div id="resultLeaderboardList" style="display: flex; flex-direction: column; gap: 6px; font-size: 13.5px;"></div>
       </div>
     </section>
   </div>

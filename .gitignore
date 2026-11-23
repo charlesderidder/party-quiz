@@ -4,3 +4,4 @@ userdata/homey-settings.json
 .env.*
 !.env.example
 .sudo_as_admin_successful
+/.homeybuild/

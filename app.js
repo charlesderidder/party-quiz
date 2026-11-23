@@ -11,8 +11,8 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const os = require('os');
+const crypto = require('crypto');
 const express = require('express');
-const cors = require('cors');
 const multer = require('multer');
 const QRCode = require('qrcode');
 const { Server: SocketIOServer } = require('socket.io');
@@ -20,11 +20,12 @@ const { Server: SocketIOServer } = require('socket.io');
 const PushManager = require('./lib/PushManager');
 const QuizEngine = require('./lib/QuizEngine');
 const FileImporter = require('./lib/FileImporter');
+const AdminSecurity = require('./lib/AdminSecurity');
 
 class PartyQuizApp extends Homey.App {
   async onInit() {
     this.log('====================================================');
-    this.log('🎉 Homey Party Quiz (SDK v3 / SHS) wordt gestart...');
+    this.log('🎉 Party Quiz (SDK v3 / SHS) wordt gestart...');
     this.log('====================================================');
 
     this.userdataDir = this._resolveUserdataDir();
@@ -33,6 +34,13 @@ class PartyQuizApp extends Homey.App {
     // 1. Load quizzes & settings
     this.quizzes = this._loadQuizzes();
     this.serverConfig = this._loadServerConfig();
+    this.adminSecurity = new AdminSecurity(this.homey.settings);
+    this.playerSecrets = new Map();
+    this.removedPlayerIds = new Set();
+    this.playerPushTests = new Map();
+    if (!this.adminSecurity.isConfigured() && process.env.PARTY_QUIZ_ADMIN_PASSWORD) {
+      this.adminSecurity.setPassword(process.env.PARTY_QUIZ_ADMIN_PASSWORD);
+    }
 
     // 2. Initialize Web Push Manager (auto-generates VAPID keys on first start)
     this.pushManager = new PushManager({
@@ -43,7 +51,10 @@ class PartyQuizApp extends Homey.App {
         if (targetPlayerId === 'ALL') {
           this.io.emit('push_notification', payload);
         } else {
-          this.io.emit('push_notification', { ...payload, targetPlayerId });
+          const player = this.quizEngine && this.quizEngine.players.get(targetPlayerId);
+          if (player && player.socketId) {
+            this.io.to(player.socketId).emit('push_notification', { ...payload, targetPlayerId });
+          }
         }
       }
     });
@@ -62,7 +73,11 @@ class PartyQuizApp extends Homey.App {
       onFlowTrigger: (triggerId, tokens, state, logEntry) => {
         this._fireHomeyFlowTrigger(triggerId, tokens, state);
         if (this.io) {
-          this.io.emit('flow_event', logEntry);
+          for (const socket of this.io.sockets.sockets.values()) {
+            if (this.adminSecurity.sessionFromRequest(socket.request)) {
+              socket.emit('flow_event', logEntry);
+            }
+          }
         }
       }
     });
@@ -73,9 +88,17 @@ class PartyQuizApp extends Homey.App {
       }
     });
 
-    // Select first quiz into lobby by default
+    this.quizEngine.on('fastest_correct', ({ playerId, roundId }) => {
+      const player = this.quizEngine.players.get(playerId);
+      if (this.io && player && player.connected && player.socketId) {
+        this.io.to(player.socketId).emit('fastest_correct', { roundId });
+      }
+    });
+
+    // Select the configured quiz into the lobby, or the first available quiz.
     if (this.quizzes.length > 0) {
-      this.quizEngine.selectQuizForLobby(this.quizzes[0]);
+      const defaultQuiz = this.quizzes.find(q => q.id === this.serverConfig.defaultQuizId);
+      this.quizEngine.selectQuizForLobby(defaultQuiz || this.quizzes[0]);
     }
 
     // 4. Register all Homey SDK v3 Flow Cards (ALS, EN, DAN)
@@ -151,22 +174,63 @@ class PartyQuizApp extends Homey.App {
       publicBaseUrl: saved.publicBaseUrl || '',
       serverPort: Number(process.env.PORT || saved.serverPort || 3456),
       soundEnabled: saved.soundEnabled !== undefined ? Boolean(saved.soundEnabled) : true,
-      vapidSubject: saved.vapidSubject || 'mailto:partyquiz@homey.local'
+      vapidSubject: saved.vapidSubject || 'mailto:partyquiz@homey.local',
+      defaultQuizId: saved.defaultQuizId || ''
     };
     this.homey.settings.set('serverConfig', config);
     return config;
   }
 
   _saveServerConfig(newPartial) {
+    const allowed = ['publicBaseUrl', 'serverPort', 'soundEnabled', 'vapidSubject', 'defaultQuizId'];
+    const updates = Object.fromEntries(allowed.filter(key => Object.prototype.hasOwnProperty.call(newPartial, key))
+      .map(key => [key, newPartial[key]]));
+    let defaultQuiz;
+    if (Object.prototype.hasOwnProperty.call(updates, 'defaultQuizId')) {
+      if (typeof updates.defaultQuizId !== 'string') throw new Error('Ongeldige standaardquiz.');
+      defaultQuiz = this.quizzes.find(q => q.id === updates.defaultQuizId);
+      if (updates.defaultQuizId && !defaultQuiz) throw new Error('Standaardquiz niet gevonden.');
+    }
     this.serverConfig = {
       ...this.serverConfig,
-      ...newPartial
+      ...updates
     };
     this.homey.settings.set('serverConfig', this.serverConfig);
     if (newPartial.vapidSubject) {
       this.homey.settings.set('vapidSubject', newPartial.vapidSubject);
     }
+    if (defaultQuiz && this.quizEngine && this.quizEngine.phase === 'lobby' &&
+        (!this.quizEngine.activeQuiz || this.quizEngine.activeQuiz.id !== defaultQuiz.id)) {
+      this.quizEngine.selectQuizForLobby(defaultQuiz);
+    }
     return this.serverConfig;
+  }
+
+  getAppSettings() {
+    return {
+      serverConfig: this.serverConfig,
+      vapidPublicKey: this.pushManager.getPublicKey(),
+      detectedLanIp: this.getDetectedLanIp(),
+      subscriptionCount: this.pushManager.subscriptions.size
+    };
+  }
+
+  async sendTestPush({ playerId, message }) {
+    const payload = {
+      title: '🔔 Party Quiz Test Push',
+      body: message || 'Web Push notificaties werken perfect op jouw toestel!',
+      tag: 'test-push'
+    };
+    if (playerId && playerId !== 'ALL') {
+      const result = await this.pushManager.sendToPlayer(playerId, payload);
+      return { success: true, result };
+    }
+    const activeIds = this.quizEngine.getLeaderboard().map(p => p.id);
+    const result = await this.pushManager.sendToAll(
+      payload,
+      activeIds.length > 0 ? activeIds : null
+    );
+    return { success: true, result };
   }
 
   getDetectedLanIp() {
@@ -317,11 +381,11 @@ class PartyQuizApp extends Homey.App {
       // 4. send_push_all
       const sendPushAllCard = this.homey.flow.getActionCard('send_push_all');
       sendPushAllCard.registerRunListener(async args => {
-        const text = String(args.tekst || 'Bericht van Homey Party Quiz!');
+        const text = String(args.tekst || 'Bericht van Party Quiz!');
         const activeIds = this.quizEngine.getLeaderboard().map(p => p.id);
         await this.pushManager.sendToAll(
           {
-            title: '📢 Homey Party Quiz',
+            title: '📢 Party Quiz',
             body: text,
             tag: 'flow-broadcast'
           },
@@ -409,11 +473,11 @@ class PartyQuizApp extends Homey.App {
   // =========================================================================
   // EXPRESS & SOCKET.IO REALTIME SERVER
   // =========================================================================
-  async _startWebServer() {
+  async _startWebServer({ host = '0.0.0.0', port = this.serverConfig.serverPort || 3456 } = {}) {
     this.expressApp = express();
     this.httpServer = http.createServer(this.expressApp);
     this.io = new SocketIOServer(this.httpServer, {
-      cors: { origin: '*', methods: ['GET', 'POST'] }
+      allowRequest: (req, callback) => callback(null, this._sameOrigin(req))
     });
 
     const upload = multer({
@@ -421,9 +485,57 @@ class PartyQuizApp extends Homey.App {
       limits: { fileSize: 10 * 1024 * 1024 }
     });
 
-    this.expressApp.use(cors());
     this.expressApp.use(express.json({ limit: '5mb' }));
     this.expressApp.use(express.urlencoded({ extended: true }));
+
+    this.expressApp.use((req, res, next) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !this._sameOrigin(req)) {
+        return res.status(403).json({ error: 'Ongeldige oorsprong.' });
+      }
+      next();
+    });
+
+    this.expressApp.get('/login', (req, res) => {
+      res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    });
+    this.expressApp.post('/api/login', (req, res) => {
+      if (!req.is('application/json')) return res.status(415).json({ error: 'JSON vereist.' });
+      if (!this.adminSecurity.authenticate(req.body && req.body.password, req.socket.remoteAddress)) {
+        return res.status(401).json({ error: 'Ongeldig wachtwoord, niet ingesteld of te veel pogingen.' });
+      }
+      const token = this.adminSecurity.createSession();
+      const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      res.setHeader('Set-Cookie', `party_quiz_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${secure ? '; Secure' : ''}`);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ success: true });
+    });
+    this.expressApp.post('/api/logout', (req, res) => {
+      const match = /(?:^|;\s*)party_quiz_admin=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '');
+      if (match) this.adminSecurity.sessions.delete(match[1]);
+      const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      res.setHeader('Set-Cookie', `party_quiz_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure ? '; Secure' : ''}`);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ success: true });
+    });
+    this.expressApp.get('/api/admin/session', (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ authenticated: this.adminSecurity.sessionFromRequest(req) });
+    });
+    this.expressApp.use((req, res, next) => {
+      const requestPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
+      const publicApi = (req.method === 'GET' && ['/api/state', '/api/qr', '/api/vapid-public-key', '/api/widget/status'].includes(requestPath)) ||
+        (req.method === 'POST' && ['/api/push/subscribe', '/api/push/player-test', '/api/player/reset'].includes(requestPath));
+      const adminPage = /^\/(admin|host|settings)(\/|$)/.test(requestPath);
+      if ((requestPath.startsWith('/api/') && !publicApi) || adminPage) {
+        res.setHeader('Cache-Control', 'no-store');
+        if (!this.adminSecurity.sessionFromRequest(req)) {
+          if (adminPage && req.method === 'GET') return res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
+          return res.status(401).json({ error: 'Meld je aan als beheerder.' });
+        }
+      }
+      next();
+    });
 
     // Service Worker at root scope (/sw.js) so it can control /play
     this.expressApp.get('/sw.js', (req, res) => {
@@ -431,6 +543,10 @@ class PartyQuizApp extends Homey.App {
       res.setHeader('Service-Worker-Allowed', '/');
       res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+    });
+
+    this.expressApp.get('/admin-navigation.js', (req, res) => {
+      res.sendFile(path.join(__dirname, 'public', 'admin-navigation.js'));
     });
 
     // Pretty URLs: /host, /play, /admin, /settings, /widget -> map naar index.html
@@ -477,7 +593,7 @@ class PartyQuizApp extends Homey.App {
       try {
         const playUrl = req.query.url || `${this.resolvePublicOrigin(req)}/play`;
         const dataUrl = await QRCode.toDataURL(playUrl, {
-          width: 340,
+          width: 1024,
           margin: 1,
           color: {
             dark: '#0F172A',
@@ -498,9 +614,57 @@ class PartyQuizApp extends Homey.App {
     });
 
     this.expressApp.post('/api/push/subscribe', (req, res) => {
-      const { playerId, subscription } = req.body || {};
+      const { playerId, playerSecret, subscription } = req.body || {};
+      if (!playerSecret || this.playerSecrets.get(playerId) !== playerSecret) {
+        return res.status(401).json({ error: 'Meld je eerst aan als speler.' });
+      }
+      if (!PushManager.isAllowedSubscription(subscription)) {
+        return res.status(400).json({ error: 'Ongeldige push-provider.' });
+      }
       const ok = this.pushManager.saveSubscription(playerId, subscription);
-      res.json({ success: ok });
+      if (!ok) return res.status(400).json({ error: 'Ongeldig push-abonnement.' });
+      res.json({ success: true });
+    });
+
+    this.expressApp.post('/api/player/reset', (req, res) => {
+      const { playerId, playerSecret } = req.body || {};
+      if (typeof playerId !== 'string' || !playerId) {
+        return res.status(400).json({ error: 'Ongeldig spelersprofiel.' });
+      }
+      try {
+        const result = this._resetPlayerSession(playerId, playerSecret);
+        res.status(result.success ? 200 : 401).json(result);
+      } catch (err) {
+        this.log('[Spelers] Sessie beëindigen mislukt:', err.message);
+        res.status(500).json({ success: false, error: 'De spelerssessie kon niet worden beëindigd.' });
+      }
+    });
+
+    this.expressApp.post('/api/push/player-test', async (req, res) => {
+      const { playerId, playerSecret } = req.body || {};
+      if (!playerSecret || this.playerSecrets.get(playerId) !== playerSecret) {
+        return res.status(401).json({ error: 'Meld je eerst aan als speler.' });
+      }
+      if (!this.pushManager.subscriptions.has(playerId)) {
+        return res.status(400).json({ error: 'Er is geen push-abonnement voor deze speler.' });
+      }
+      const now = Date.now();
+      if (now - (this.playerPushTests.get(playerId) || 0) < 10000) {
+        return res.status(429).json({ error: 'Wacht 10 seconden voor een nieuwe testmelding.' });
+      }
+      this.playerPushTests.set(playerId, now);
+      try {
+        const result = await this.pushManager.sendToPlayer(playerId, {
+          title: '🔔 Party Quiz testmelding',
+          body: 'Web Push is gekoppeld aan jouw speler.',
+          tag: 'test-push'
+        }, { realtime: false });
+        if (!result.sent) return res.status(502).json({ error: 'De testmelding kon niet worden verzonden. Controleer je pushinstellingen en probeer opnieuw.' });
+        res.json({ success: true });
+      } catch (err) {
+        this.log('[Push] Testmelding mislukt:', err.message);
+        res.status(500).json({ error: 'De testmelding kon niet worden verzonden.' });
+      }
     });
 
     this.expressApp.post('/api/push/regenerate-vapid', (req, res) => {
@@ -508,23 +672,12 @@ class PartyQuizApp extends Homey.App {
       res.json({ success: true, publicKey: newPublicKey });
     });
 
-    this.expressApp.post('/api/push/test', async (req, res) => {
-      const { playerId, message } = req.body || {};
-      const payload = {
-        title: '🔔 Homey Party Quiz Test Push',
-        body: message || 'Web Push notificaties werken perfect op jouw toestel!',
-        tag: 'test-push'
-      };
-      if (playerId && playerId !== 'ALL') {
-        const result = await this.pushManager.sendToPlayer(playerId, payload);
-        return res.json({ success: true, result });
+    this.expressApp.post('/api/push/test', async (req, res, next) => {
+      try {
+        res.json(await this.sendTestPush(req.body || {}));
+      } catch (err) {
+        next(err);
       }
-      const activeIds = this.quizEngine.getLeaderboard().map(p => p.id);
-      const result = await this.pushManager.sendToAll(
-        payload,
-        activeIds.length > 0 ? activeIds : null
-      );
-      res.json({ success: true, result });
     });
 
     // API: Widget endpoints
@@ -644,17 +797,26 @@ class PartyQuizApp extends Homey.App {
 
     // API: Server & Reverse-Proxy Settings
     this.expressApp.get('/api/settings', (req, res) => {
-      res.json({
-        serverConfig: this.serverConfig,
-        vapidPublicKey: this.pushManager.getPublicKey(),
-        detectedLanIp: this.getDetectedLanIp(),
-        subscriptionCount: this.pushManager.subscriptions.size
-      });
+      res.json(this.getAppSettings());
+    });
+
+    this.expressApp.post('/api/settings/password', (req, res) => {
+      try {
+        this.adminSecurity.setPassword(req.body && req.body.newPassword);
+        res.setHeader('Set-Cookie', 'party_quiz_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+        res.json({ success: true });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
     });
 
     this.expressApp.post('/api/settings', (req, res) => {
-      const updated = this._saveServerConfig(req.body || {});
-      res.json({ success: true, serverConfig: updated });
+      try {
+        const updated = this._saveServerConfig(req.body || {});
+        res.json({ success: true, serverConfig: updated });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
     });
 
     // API: Game Controls & Flow Action/Condition Tester
@@ -713,6 +875,10 @@ class PartyQuizApp extends Homey.App {
       res.json({ conditionId, playerId, result });
     });
 
+    this.expressApp.get('/api/flow/history', (req, res) => {
+      res.json({ flowHistory: this.quizEngine.flowHistory.slice(0, 20) });
+    });
+
     // Demo Party Bot helper so users can test full multi-player podiums & rank triggers immediately
     this.expressApp.post('/api/demo/add-bots', (req, res) => {
       const demoPlayers = [
@@ -740,7 +906,8 @@ class PartyQuizApp extends Homey.App {
       );
       bots.forEach((bot, idx) => {
         setTimeout(() => {
-          if (this.quizEngine.phase === 'question') {
+          if (this.quizEngine.phase === 'question' &&
+              this.quizEngine.activeQuiz.questions[this.quizEngine.currentQuestionIndex] === q) {
             // 70% kans dat een bot het juiste antwoord kiest
             const pick =
               Math.random() < 0.7 ? correctIdx : Math.floor(Math.random() * 4);
@@ -752,15 +919,14 @@ class PartyQuizApp extends Homey.App {
     });
 
     // Root hub page
-    this.expressApp.use('/', express.static(path.join(__dirname, 'public')));
+    this.expressApp.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
     // Socket.io Realtime Handlers
     this._setupSocketHandlers();
 
-    const port = this.serverConfig.serverPort || 3456;
     await new Promise(resolve => {
-      this.httpServer.listen(port, '0.0.0.0', () => {
-        this.log(`🚀 Homey Party Quiz Webserver & Socket.io actief op http://0.0.0.0:${port}`);
+      this.httpServer.listen(port, host, () => {
+        this.log(`🚀 Party Quiz Webserver & Socket.io actief op http://0.0.0.0:${port}`);
         this.log(`   📺 Host / TV scherm : http://${this.getDetectedLanIp()}:${port}/host`);
         this.log(`   📱 Spelersscherm    : http://${this.getDetectedLanIp()}:${port}/play`);
         this.log(`   ⚙️  Beheer & Editor  : http://${this.getDetectedLanIp()}:${port}/admin`);
@@ -770,6 +936,54 @@ class PartyQuizApp extends Homey.App {
     });
   }
 
+  _sameOrigin(req) {
+    const origin = req.headers.origin;
+    if (!origin) return true;
+    try {
+      return new URL(origin).host.toLowerCase() === String(req.headers.host || '').toLowerCase();
+    } catch (err) {
+      return false;
+    }
+  }
+
+  _removePlayers(playerIds) {
+    const players = playerIds.map(id => this.quizEngine.players.get(id)).filter(Boolean);
+    const ids = players.map(player => player.id);
+    this.pushManager.removeSubscriptions(ids);
+    for (const player of players) {
+      this.removedPlayerIds.add(player.id);
+      this.playerSecrets.delete(player.id);
+      this.playerPushTests.delete(player.id);
+    }
+    const removedIds = new Set(ids);
+    for (const socket of this.io.sockets.sockets.values()) {
+      if (removedIds.has(socket.data.playerId)) {
+        socket.emit('player_removed');
+        delete socket.data.playerId;
+      }
+    }
+    return this.quizEngine.removePlayers(ids);
+  }
+
+  _resetPlayerSession(playerId, playerSecret, boundPlayerId = null) {
+    if (!this.playerSecrets.has(playerId)) return { success: true };
+    if (playerId !== boundPlayerId && this.playerSecrets.get(playerId) !== playerSecret) {
+      return { success: false, error: 'Deze spelerssessie kan niet worden beëindigd.' };
+    }
+    this.pushManager.removeSubscriptions([playerId]);
+    this.playerSecrets.delete(playerId);
+    this.removedPlayerIds.add(playerId);
+    this.playerPushTests.delete(playerId);
+    for (const socket of this.io.sockets.sockets.values()) {
+      if (socket.data.playerId === playerId) {
+        delete socket.data.playerId;
+        socket.emit('player_session_ended');
+        this.quizEngine.handleDisconnect(socket.id);
+      }
+    }
+    return { success: true };
+  }
+
   _setupSocketHandlers() {
     this.io.on('connection', socket => {
       // Immediately send current quiz state on connect
@@ -777,15 +991,34 @@ class PartyQuizApp extends Homey.App {
 
       socket.on('player_join', (payload, ack) => {
         try {
+          if (!payload || typeof payload.name !== 'string' || !payload.name.trim()) {
+            throw new Error('Vul je naam in.');
+          }
+          let playerId = payload.playerId;
+          let playerSecret = payload.playerSecret;
+          if (playerId && this.removedPlayerIds.has(playerId)) {
+            if (typeof ack === 'function') ack({ success: false, code: 'player_removed', error: 'Je bent uit de quiz verwijderd.' });
+            return;
+          }
+          if (playerId && this.playerSecrets.has(playerId)) {
+            if (!playerSecret || this.playerSecrets.get(playerId) !== playerSecret) {
+              throw new Error('Deze speler kan niet worden hersteld.');
+            }
+          } else {
+            playerId = `p_${crypto.randomBytes(16).toString('hex')}`;
+            playerSecret = crypto.randomBytes(32).toString('hex');
+            this.playerSecrets.set(playerId, playerSecret);
+          }
           const player = this.quizEngine.joinOrReconnectPlayer({
-            playerId: payload.playerId,
+            playerId,
             name: payload.name,
-            avatar: payload.avatar,
-            color: payload.color,
+            avatar: typeof payload.avatar === 'string' ? payload.avatar.slice(0, 8) : undefined,
+            color: typeof payload.color === 'string' && /^#[a-f0-9]{6}$/i.test(payload.color) ? payload.color : undefined,
             socketId: socket.id
           });
+          socket.data.playerId = player.id;
           if (typeof ack === 'function') {
-            ack({ success: true, player, state: this.quizEngine.getPublicState() });
+            ack({ success: true, player, playerSecret, state: this.quizEngine.getPublicState() });
           }
         } catch (err) {
           if (typeof ack === 'function') {
@@ -796,13 +1029,37 @@ class PartyQuizApp extends Homey.App {
 
       socket.on('submit_answer', (payload, ack) => {
         const { playerId, answerIndex } = payload || {};
+        if (!playerId || this.quizEngine.socketToPlayer.get(socket.id) !== playerId) {
+          if (typeof ack === 'function') ack({ accepted: false, reason: 'Meld je eerst aan als speler.' });
+          return;
+        }
         const result = this.quizEngine.submitAnswer(playerId, answerIndex);
         if (typeof ack === 'function') {
           ack(result);
         }
       });
 
+      socket.on('player_reset', (payload, ack) => {
+        const boundPlayerId = socket.data.playerId;
+        const playerId = boundPlayerId || (payload && payload.playerId);
+        if (!playerId) {
+          if (typeof ack === 'function') ack({ success: true });
+          return;
+        }
+        try {
+          const result = this._resetPlayerSession(playerId, payload && payload.playerSecret, boundPlayerId);
+          if (typeof ack === 'function') ack(result);
+        } catch (err) {
+          this.log('[Spelers] Sessie beëindigen mislukt:', err.message);
+          if (typeof ack === 'function') ack({ success: false, error: 'De spelerssessie kon niet worden beëindigd.' });
+        }
+      });
+
       socket.on('host_select_quiz', (payload, ack) => {
+        if (!this.adminSecurity.sessionFromRequest(socket.request)) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Meld je aan als beheerder.' });
+          return;
+        }
         const quiz = this.quizzes.find(q => q.id === (payload && payload.quizId));
         if (quiz) {
           this.quizEngine.selectQuizForLobby(quiz);
@@ -813,6 +1070,10 @@ class PartyQuizApp extends Homey.App {
       });
 
       socket.on('host_start_quiz', (payload, ack) => {
+        if (!this.adminSecurity.sessionFromRequest(socket.request)) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Meld je aan als beheerder.' });
+          return;
+        }
         try {
           const quizId = payload && payload.quizId;
           const quiz =
@@ -827,6 +1088,10 @@ class PartyQuizApp extends Homey.App {
       });
 
       socket.on('host_next_step', (payload, ack) => {
+        if (!this.adminSecurity.sessionFromRequest(socket.request)) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Meld je aan als beheerder.' });
+          return;
+        }
         try {
           const state = this.quizEngine.nextStep();
           if (typeof ack === 'function') ack({ success: true, state });
@@ -836,8 +1101,31 @@ class PartyQuizApp extends Homey.App {
       });
 
       socket.on('host_kick_player', (payload, ack) => {
-        const removed = this.quizEngine.removePlayer(payload && payload.playerId);
-        if (typeof ack === 'function') ack({ success: removed });
+        if (!this.adminSecurity.sessionFromRequest(socket.request)) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Meld je aan als beheerder.' });
+          return;
+        }
+        try {
+          const removed = this._removePlayers([payload && payload.playerId]);
+          if (typeof ack === 'function') ack({ success: removed > 0 });
+        } catch (err) {
+          this.log('[Spelers] Verwijderen mislukt:', err.message);
+          if (typeof ack === 'function') ack({ success: false, error: 'Speler verwijderen mislukt.' });
+        }
+      });
+
+      socket.on('host_clear_players', (payload, ack) => {
+        if (!this.adminSecurity.sessionFromRequest(socket.request)) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Meld je aan als beheerder.' });
+          return;
+        }
+        try {
+          const removed = this._removePlayers(Array.from(this.quizEngine.players.keys()));
+          if (typeof ack === 'function') ack({ success: true, removed });
+        } catch (err) {
+          this.log('[Spelers] Verwijderen mislukt:', err.message);
+          if (typeof ack === 'function') ack({ success: false, error: 'Spelers verwijderen mislukt.' });
+        }
       });
 
       socket.on('disconnect', () => {

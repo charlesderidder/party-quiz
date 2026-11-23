@@ -11,7 +11,7 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('push', event => {
   let payload = {
-    title: 'Homey Party Quiz',
+    title: 'Party Quiz',
     body: 'Er is een update in de quiz!',
     icon: '/assets/icon.svg',
     badge: '/assets/icon.svg',
