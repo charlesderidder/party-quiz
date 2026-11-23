@@ -1,0 +1,21 @@
+{
+  "title": {
+    "nl": "De quiz voorbij is",
+    "en": "The quiz has finished"
+  },
+  "hint": {
+    "nl": "Triggert wanneer de host de eindstand opent, ook als er geen spelers zijn.",
+    "en": "Triggers when the host opens the final standings, even if there are no players."
+  },
+  "tokens": [
+    {
+      "name": "quiz_naam",
+      "type": "string",
+      "title": {
+        "nl": "Quiz naam",
+        "en": "Quiz name"
+      },
+      "example": "Vrijdagmiddag Borrel Quiz"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ const vm = require('node:vm');
 
 const api = require('../api');
 const PartyQuizApp = require('../app');
+const QuizEngine = require('../lib/QuizEngine');
 
 function createSettingsPage({ standalone = false, failSettings = false } = {}) {
   const elements = new Map();
@@ -62,6 +63,45 @@ function createSettingsPage({ standalone = false, failSettings = false } = {}) {
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
+
+test('new Homey flow cards register and use player context and quiz completion', async t => {
+  const app = new PartyQuizApp();
+  const triggers = new Map();
+  const conditions = new Map();
+  const fired = [];
+  const card = () => ({
+    registerRunListener(listener) { this.run = listener; },
+    registerArgumentAutocompleteListener(name, listener) { this.autocomplete = listener; },
+    async trigger(tokens, state) { fired.push({ tokens, state }); }
+  });
+  app.homey = { flow: {
+    getTriggerCard(id) { const result = card(); triggers.set(id, result); return result; },
+    getConditionCard(id) { const result = card(); conditions.set(id, result); return result; },
+    getActionCard() { return card(); }
+  } };
+  app.log = () => {};
+  app.triggerCards = {};
+  app.quizEngine = new QuizEngine({
+    onFlowTrigger: (id, tokens, state) => app._fireHomeyFlowTrigger(id, tokens, state)
+  });
+  t.after(() => app.quizEngine._clearTimers());
+  app._registerFlowCards();
+
+  const missing = conditions.get('is_last_answer_missing');
+  assert.ok(missing && triggers.has('quiz_finished'));
+  app.quizEngine.selectQuizForLobby({ id: 'quiz', title: 'Testquiz', questions: [
+    { id: 'q', question: 'Vraag?', options: ['A', 'B', 'C', 'D'], correctIndex: 0 }
+  ] });
+  app.quizEngine.joinOrReconnectPlayer({ playerId: 'player', name: 'Speler', socketId: 'one' });
+  assert.ok((await missing.autocomplete('Speler')).some(player => player.id === 'player'));
+  app.quizEngine.nextStep();
+  assert.equal(await missing.run({ player: { id: '__trigger__' } }, { playerId: 'player' }), true);
+  app.quizEngine.nextStep();
+  const beforeFinish = fired.length;
+  app.quizEngine.nextStep();
+  assert.equal(fired.length, beforeFinish + 2);
+  assert.deepEqual(fired[fired.length - 1], { tokens: { quiz_naam: 'Testquiz' }, state: {} });
+});
 
 test('Homey settings view becomes ready and uses its API for loading and saving', async () => {
   const page = createSettingsPage();

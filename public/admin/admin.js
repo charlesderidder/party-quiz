@@ -527,6 +527,7 @@
   // =========================================================================
   const TRIGGER_LABELS = {
     quiz_started: '🚀 quiz_started',
+    quiz_finished: '🏁 quiz_finished',
     question_asked: '❓ question_asked',
     question_time_up: '⏰ question_time_up',
     player_answered_correct: '✅ player_answered_correct',

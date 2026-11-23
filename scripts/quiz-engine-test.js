@@ -127,3 +127,51 @@ test('only the first correct answer wins, once when the round closes', t => {
   assert.equal(winners[1].playerId, 'later');
   assert.notEqual(winners[1].roundId, winners[0].roundId);
 });
+
+test('missing answer condition applies to the selected player and current question', t => {
+  const game = createGame(t);
+  const condition = 'is_last_answer_missing';
+  game.joinOrReconnectPlayer({ playerId: 'player', name: 'Speler', socketId: 'one' });
+  const selected = { player: { id: 'player' } };
+  assert.equal(game.evaluateCondition(condition, selected), false);
+
+  game.nextStep();
+  assert.equal(game.evaluateCondition(condition, selected), true);
+  assert.equal(game.evaluateCondition(condition, { player: { id: '__trigger__' } }), false);
+  assert.equal(game.evaluateCondition(condition, { player: { id: '__trigger__' } }, { playerId: 'player' }), true);
+  assert.equal(game.evaluateCondition(condition, { player: { id: 'missing' } }), false);
+  game.submitAnswer('player', 0);
+  assert.equal(game.evaluateCondition(condition, selected), false);
+  game.nextStep();
+  assert.equal(game.evaluateCondition(condition, selected), false);
+
+  game.nextStep();
+  assert.equal(game.evaluateCondition(condition, selected), true);
+  game.nextStep();
+  assert.equal(game.evaluateCondition(condition, selected), true);
+  game.nextStep();
+  assert.equal(game.evaluateCondition(condition, selected), true);
+  game.nextStep();
+  assert.equal(game.evaluateCondition(condition, selected), false);
+});
+
+test('quiz finished trigger fires once on final standings, even without players', t => {
+  const game = createGame(t, [question('one')]);
+  const events = [];
+  game.on('flow_triggered', event => {
+    if (event.triggerId === 'quiz_finished') events.push(event);
+  });
+  game.nextStep();
+  game.nextStep();
+  assert.equal(events.length, 0);
+  game.nextStep();
+  assert.equal(game.phase, 'finished');
+  assert.equal(events.length, 1);
+  assert.deepEqual(events[0].tokens, { quiz_naam: 'Quiz' });
+  game.nextStep();
+  assert.equal(events.length, 1);
+  game.nextStep();
+  game.nextStep();
+  game.nextStep();
+  assert.equal(events.length, 2);
+});

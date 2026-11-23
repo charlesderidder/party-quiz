@@ -393,14 +393,6 @@
     }
   });
 
-  socket.on('flow_event', entry => {
-    if (!entry) return;
-    const tokenPairs = Object.entries(entry.tokens || {})
-      .map(([k, v]) => `[${k}: ${v}]`)
-      .join(' ');
-    document.getElementById('flowTickerText').textContent = `Trigger "${entry.triggerId}" afgevuurd ${tokenPairs}`;
-  });
-
   window.__kickPlayer = playerId => {
     adminAction('host_kick_player', { playerId });
   };

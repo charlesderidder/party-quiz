@@ -265,6 +265,7 @@ class PartyQuizApp extends Homey.App {
 
     const triggerIds = [
       'quiz_started',
+      'quiz_finished',
       'question_asked',
       'question_time_up',
       'player_answered_correct',
@@ -289,6 +290,7 @@ class PartyQuizApp extends Homey.App {
       'is_player_winner',
       'is_last_answer_correct',
       'is_last_answer_wrong',
+      'is_last_answer_missing',
       'did_player_rank_up',
       'is_player_in_top3',
       'is_player_outside_top3',

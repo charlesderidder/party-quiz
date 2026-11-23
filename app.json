@@ -562,6 +562,28 @@
       },
       {
         "title": {
+          "nl": "De quiz voorbij is",
+          "en": "The quiz has finished"
+        },
+        "hint": {
+          "nl": "Triggert wanneer de host de eindstand opent, ook als er geen spelers zijn.",
+          "en": "Triggers when the host opens the final standings, even if there are no players."
+        },
+        "tokens": [
+          {
+            "name": "quiz_naam",
+            "type": "string",
+            "title": {
+              "nl": "Quiz naam",
+              "en": "Quiz name"
+            },
+            "example": "Vrijdagmiddag Borrel Quiz"
+          }
+        ],
+        "id": "quiz_finished"
+      },
+      {
+        "title": {
           "nl": "Een nieuwe quiz start",
           "en": "A new quiz starts"
         },
@@ -633,6 +655,35 @@
           }
         ],
         "id": "is_last_answer_correct"
+      },
+      {
+        "title": {
+          "nl": "Speler !{{heeft geen|heeft wel een}} antwoord gegeven",
+          "en": "Player !{{did not|did}} answer"
+        },
+        "titleFormatted": {
+          "nl": "[[player]] !{{heeft geen|heeft wel een}} antwoord gegeven",
+          "en": "[[player]] !{{did not|did}} answer"
+        },
+        "hint": {
+          "nl": "Controleert of de speler de huidige of laatst afgesloten vraag niet heeft beantwoord.",
+          "en": "Checks whether the player has not answered the current or most recently closed question."
+        },
+        "args": [
+          {
+            "name": "player",
+            "type": "autocomplete",
+            "title": {
+              "nl": "Speler",
+              "en": "Player"
+            },
+            "placeholder": {
+              "nl": "Kies speler of gebruik trigger-context",
+              "en": "Select player or use trigger context"
+            }
+          }
+        ],
+        "id": "is_last_answer_missing"
       },
       {
         "title": {

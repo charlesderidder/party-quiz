@@ -196,6 +196,7 @@ async function run() {
     'did_player_rank_up',
     'is_last_answer_correct',
     'is_last_answer_wrong',
+    'is_last_answer_missing',
     'is_player_winner'
   ]) {
     const r = await api('/api/flow/evaluate-condition', {
@@ -219,6 +220,7 @@ async function run() {
   check('Quiz eindigt in finished-fase', fin.phase === 'finished');
   await sleep(400);
   check('player_won trigger afgevuurd', received.flow_event.some(f => f.triggerId === 'player_won'));
+  check('quiz_finished trigger afgevuurd', received.flow_event.some(f => f.triggerId === 'quiz_finished'));
   check('Flow-logboek is niet publiek', publicFlowEvents.length === 0);
 
   // ---- 12. CRUD ----

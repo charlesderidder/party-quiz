@@ -4,7 +4,7 @@ Een complete, productieklare **Kahoot-stijl groepsquiz** als Homey-app (SDK v3),
 **Homey Self-Hosted Server (SHS)** op Proxmox / Linux / Docker / Synology.
 
 Vier interfaces, realtime Socket.io, Web Push (VAPID), een officiële Dashboard Widget en
-25 Homey Flow-kaarten (10 ALS · 7 EN · 5 DAN).
+24 Homey Flow-kaarten (11 ALS · 8 EN · 5 DAN).
 
 ---
 
@@ -21,8 +21,9 @@ homey-party-quiz/
 ├── .homeycompose/
 │   ├── app.json                      # Basis-manifest (sdk 3, compatibility >=12.3.0)
 │   └── flow/
-│       ├── triggers/                 # 10 ALS-kaarten
+│       ├── triggers/                 # 11 ALS-kaarten
 │       │   ├── quiz_started.json
+│       │   ├── quiz_finished.json
 │       │   ├── question_asked.json
 │       │   ├── question_time_up.json
 │       │   ├── player_answered_correct.json
@@ -32,10 +33,11 @@ homey-party-quiz/
 │       │   ├── player_left_top3.json
 │       │   ├── player_is_first.json
 │       │   └── player_won.json
-│       ├── conditions/               # 7 EN-kaarten
+│       ├── conditions/               # 8 EN-kaarten
 │       │   ├── is_player_winner.json
 │       │   ├── is_last_answer_correct.json
 │       │   ├── is_last_answer_wrong.json
+│       │   ├── is_last_answer_missing.json
 │       │   ├── did_player_rank_up.json
 │       │   ├── is_player_in_top3.json
 │       │   ├── is_player_outside_top3.json
@@ -230,7 +232,7 @@ en `/play` (teller + decaying gauge).
   met iconen (▲ ◆ ● ■), live antwoordteller.
 - Na elke vraag: **geanimeerd Top 3-podium** + volledige ranglijst met **stijgers (▲) en dalers (▼)**.
 - Subtiele **Web Audio API**-geluidjes (start, tik-tik in de laatste 5s, reveal, winnaarfanfare)
-  met aan/uit-knop. Live ticker met afgevuurde Homey Flow-triggers.
+  met aan/uit-knop.
 
 ### 📱 `/play`
 - Mobile-first login: unieke naam, avatar (8 emoji's), Homey-tegelkleur (6 kleuren).
@@ -269,14 +271,15 @@ en `/play` (teller + decaying gauge).
 
 ---
 
-## 7. Flow-kaarten (25)
+## 7. Flow-kaarten (24)
 
-**ALS (10)** — alle speler-triggers leveren `[speler_naam]`, `[score]`, `[positie]`,
+**ALS (11)** — alle speler-triggers leveren `[speler_naam]`, `[score]`, `[positie]`,
 `[vorige_positie]`, `[quiz_naam]`; vraag-triggers `[vraag_tekst]`, `[vraag_nummer]`.
 
 | id | Kaart |
 | --- | --- |
 | `quiz_started` | Als een nieuwe quiz start |
+| `quiz_finished` | Als de eindstand wordt geopend, ook zonder spelers |
 | `question_asked` | Als een nieuwe vraag wordt gesteld |
 | `question_time_up` | Als de tijd voor een vraag voorbij is |
 | `player_answered_correct` | Als een speler een goed antwoord heeft gegeven |
@@ -287,10 +290,13 @@ en `/play` (teller + decaying gauge).
 | `player_is_first` | Als een speler op de 1e plek staat |
 | `player_won` | Als een speler heeft gewonnen |
 
-**EN (7)** — met autocomplete-argument `player` (incl. “⚡ Speler uit ALS-kaart”):
+**EN (8)** — met autocomplete-argument `player` (incl. “⚡ Speler uit ALS-kaart”):
 
 `is_player_winner` · `is_last_answer_correct` · `is_last_answer_wrong` · `did_player_rank_up` ·
-`is_player_in_top3` · `is_player_outside_top3` · `is_player_first`
+`is_last_answer_missing` · `is_player_in_top3` · `is_player_outside_top3` · `is_player_first`
+
+`is_last_answer_missing` controleert de huidige of laatst afgesloten vraag en is in de lobby
+onwaar. Kies een speler of gebruik een spelergebonden ALS-kaart als trigger-context.
 
 **DAN (5)**:
 
