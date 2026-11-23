@@ -17,8 +17,7 @@
       ['/play', 'Spelen'],
       ['/host', 'Host'],
       ['/admin', 'Quizbeheer'],
-      ['/settings', 'Instellingen'],
-      ['/widget', 'Dashboard']
+      ['/settings', 'Instellingen']
     ];
     const currentPath = location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '') || '/';
     const nav = document.createElement('nav');

@@ -116,19 +116,6 @@
       padding: 20px;
     }
 
-    .flow-log-item {
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
     @media (max-width: 960px) {
       .editor-grid, .options-editor-grid {
         grid-template-columns: 1fr;
@@ -142,14 +129,13 @@
       <div class="homey-orb">⚙️</div>
       <div>
         <div style="font-weight: 800; font-size: 18px;">Party Quiz — Beheer &amp; Quiz Editor</div>
-        <div style="font-size: 12px; color: var(--text-muted);">Homey App Settings • CRUD Editor • Excel/CSV/JSON Import • VAPID &amp; Flows</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Homey App Settings • CRUD Editor • Excel/CSV/JSON Import • VAPID</div>
       </div>
     </a>
 
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
       <a href="/host" class="btn-homey btn-sm">📺 Open Host (/host)</a>
       <a href="/play" target="_blank" class="btn-homey btn-sm">📱 Open Speler (/play)</a>
-      <a href="/widget" target="_blank" class="btn-homey btn-sm">📊 Open Widget (/widget)</a>
     </div>
   </header>
 
@@ -157,9 +143,8 @@
     <!-- Tab Navigation -->
     <nav class="glass-card tab-nav">
       <button class="tab-btn active" data-tab="tabEditor">📝 Quiz Editor (CRUD)</button>
-      <button class="tab-btn" data-tab="tabImport">📥 Import (.xlsx, .csv, .json)</button>
+      <button class="tab-btn" data-tab="tabImport">📥 Import &amp; back-up</button>
       <button class="tab-btn" data-tab="tabSettings">🔒 HTTPS, Reverse Proxy &amp; Web Push (VAPID)</button>
-      <button class="tab-btn" data-tab="tabFlows">⚡ Homey Flows (ALS / EN / DAN Studio)</button>
     </nav>
 
     <!-- Status Notification Banner -->
@@ -245,6 +230,17 @@
         <strong>Ondersteunde kolomnamen in Excel (.xlsx) &amp; CSV:</strong><br />
         <code>vraag</code> | <code>optie_1</code> | <code>optie_2</code> | <code>optie_3</code> | <code>optie_4</code> | <code>juist_antwoord</code> (1 t/m 4 of A t/m D) | <code>tijdslimiet</code> (standaard 20 sec) | <code>punten</code> (standaard 1000)
       </div>
+
+      <div style="background: var(--surface-subtle); padding: 18px; border-radius: 18px;">
+        <h3>Back-up van alle opgeslagen quizzen</h3>
+        <p style="font-size: 13px; margin: 8px 0 12px;">Download een JSON-back-up of zet deze terug als nieuwe kopieën. Niet-opgeslagen wijzigingen worden niet meegenomen.</p>
+        <button id="btnExportBackup" type="button" class="btn-homey">💾 Download back-up</button>
+        <form id="restoreBackupForm" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
+          <label for="backupFileInput">Back-upbestand (.json)</label>
+          <input type="file" id="backupFileInput" accept=".json,application/json" class="input-homey" required />
+          <button type="submit" class="btn-homey">📥 Back-up terugzetten</button>
+        </form>
+      </div>
     </section>
 
     <!-- TAB 3: HTTPS / REVERSE PROXY & VAPID WEB PUSH SETTINGS -->
@@ -300,65 +296,6 @@
       </div>
     </section>
 
-    <!-- TAB 4: HOMEY FLOW STUDIO & MONITOR -->
-    <section id="tabFlows" style="display: none; flex-direction: column; gap: 22px;">
-      <div class="editor-grid" style="grid-template-columns: 1fr 1fr;">
-        <!-- DAN Actions & EN Conditions Tester -->
-        <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
-          <div>
-            <span class="glass-pill" style="color: var(--homey-blue); margin-bottom: 6px;">⚡ DAN-Kaarten &amp; EN-Kaarten</span>
-            <h3 style="font-size: 20px; font-weight: 900;">Test Homey Flow Acties &amp; Condities</h3>
-          </div>
-
-          <div style="background: var(--surface-subtle); padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="font-weight: 800; font-size: 14px;">DAN: Geef [speler] [aantal] bonuspunten (<code>give_bonus_points</code>)</div>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="flowBonusPlayer" class="input-homey" placeholder="Spelernaam (bijv. Sophie)" />
-              <input type="number" id="flowBonusPoints" class="input-homey" value="250" style="max-width: 120px;" />
-              <button id="btnRunBonusFlow" class="btn-homey btn-primary">Voer uit</button>
-            </div>
-          </div>
-
-          <div style="background: var(--surface-subtle); padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="font-weight: 800; font-size: 14px;">DAN: Verstuur Web Push naar alle spelers (<code>send_push_all</code>)</div>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="flowPushAllText" class="input-homey" value="De lichten in de woonkamer knipperen voor de leider!" />
-              <button id="btnRunPushAllFlow" class="btn-homey btn-primary">Verstuur</button>
-            </div>
-          </div>
-
-          <div style="background: var(--surface-subtle); padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="font-weight: 800; font-size: 14px;">EN: Controleer Flow-conditie voor een speler</div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <select id="flowConditionSelect" class="input-homey" style="flex: 1;">
-                <option value="is_player_first">is_player_first — Staat op de 1e plek</option>
-                <option value="is_player_in_top3">is_player_in_top3 — Zit in de top 3</option>
-                <option value="is_player_outside_top3">is_player_outside_top3 — Valt buiten de top 3</option>
-                <option value="did_player_rank_up">did_player_rank_up — Is gestegen in positie</option>
-                <option value="is_last_answer_correct">is_last_answer_correct — Laatste antwoord was goed</option>
-                <option value="is_last_answer_wrong">is_last_answer_wrong — Laatste antwoord was fout</option>
-                <option value="is_last_answer_missing">is_last_answer_missing — Geen antwoord gegeven</option>
-                <option value="is_player_winner">is_player_winner — Is de winnaar</option>
-              </select>
-              <input type="text" id="flowConditionPlayer" class="input-homey" placeholder="Spelernaam" style="max-width: 160px;" />
-              <button id="btnEvalCondition" class="btn-homey">Test EN</button>
-            </div>
-            <div id="flowConditionResult" style="font-size: 13px; font-weight: 800;"></div>
-          </div>
-        </div>
-
-        <!-- Live ALS Triggers Log -->
-        <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <span class="glass-pill" style="color: var(--homey-green); margin-bottom: 6px;">🔔 ALS-Kaarten (11 Triggers)</span>
-              <h3 style="font-size: 20px; font-weight: 900;">Live Flow Trigger Logboek</h3>
-            </div>
-          </div>
-          <div id="flowEventsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 440px; overflow-y: auto;"></div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>

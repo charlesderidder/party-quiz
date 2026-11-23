@@ -337,15 +337,7 @@ async function run() {
     body: JSON.stringify({ publicBaseUrl: '', vapidSubject: 'mailto:partyquiz@homey.local' })
   });
 
-  // ---- 15. Widget API ----
-  const widget = (await api('/api/widget/status')).data;
-  check(
-    'Widget status API',
-    widget.quizName && typeof widget.playerCount === 'number' && Array.isArray(widget.top3),
-    `${widget.playerCount} spelers, ${widget.top3.length} in top3`
-  );
-
-  // ---- 16. Reconnect (sessiebehoud na refresh) ----
+  // ---- 15. Reconnect (sessiebehoud na refresh) ----
   const rejoin = await new Promise(resolve =>
     socket.emit(
       'player_join',

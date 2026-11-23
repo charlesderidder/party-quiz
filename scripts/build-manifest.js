@@ -21,27 +21,12 @@ function loadFlowFolder(subFolder) {
   });
 }
 
-function loadWidgets() {
-  const widgetsDir = path.join(rootDir, 'widgets');
-  if (!fs.existsSync(widgetsDir)) return {};
-  const widgets = {};
-  for (const entry of fs.readdirSync(widgetsDir)) {
-    const composeFile = path.join(widgetsDir, entry, 'widget.compose.json');
-    if (fs.existsSync(composeFile)) {
-      widgets[entry] = readJson(composeFile);
-    }
-  }
-  return widgets;
-}
-
 const baseManifest = readJson(path.join(composeDir, 'app.json'));
 baseManifest.flow = {
   triggers: loadFlowFolder('triggers'),
   conditions: loadFlowFolder('conditions'),
   actions: loadFlowFolder('actions')
 };
-baseManifest.widgets = loadWidgets();
-
 const outputPath = path.join(rootDir, 'app.json');
 fs.writeFileSync(outputPath, JSON.stringify(baseManifest, null, 2) + '\n', 'utf8');
-console.log(`Built app.json with ${baseManifest.flow.triggers.length} triggers, ${baseManifest.flow.conditions.length} conditions, ${baseManifest.flow.actions.length} actions, and ${Object.keys(baseManifest.widgets).length} widget(s).`);
+console.log(`Built app.json with ${baseManifest.flow.triggers.length} triggers, ${baseManifest.flow.conditions.length} conditions, and ${baseManifest.flow.actions.length} actions.`);

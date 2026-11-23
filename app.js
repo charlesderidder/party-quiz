@@ -158,7 +158,40 @@ class PartyQuizApp extends Homey.App {
     return [];
   }
 
-  _saveQuizzes(quizzesArray) {
+  _saveQuizzes(quizzesArray, { requireFile = false } = {}) {
+    if (requireFile) {
+      const tempPath = `${this.quizzesFilePath}.${crypto.randomUUID()}.tmp`;
+      let tempCreated = false;
+      let settingsTouched = false;
+      try {
+        const fd = fs.openSync(tempPath, 'wx');
+        tempCreated = true;
+        try {
+          fs.writeFileSync(fd, JSON.stringify(quizzesArray, null, 2), 'utf8');
+        } finally {
+          fs.closeSync(fd);
+        }
+        settingsTouched = true;
+        this.homey.settings.set('quizzes', quizzesArray);
+        fs.renameSync(tempPath, this.quizzesFilePath);
+      } catch (err) {
+        if (settingsTouched) {
+          try {
+            this.homey.settings.set('quizzes', this.quizzes);
+          } catch (rollbackErr) {
+            this.log('[Storage] Herstellen van quizinstellingen mislukt:', rollbackErr.message);
+          }
+        }
+        try {
+          if (tempCreated) fs.unlinkSync(tempPath);
+        } catch (cleanupErr) {
+          this.log('[Storage] Opruimen van tijdelijk quizbestand mislukt:', cleanupErr.message);
+        }
+        throw err;
+      }
+      this.quizzes = quizzesArray;
+      return;
+    }
     this.quizzes = quizzesArray;
     this.homey.settings.set('quizzes', this.quizzes);
     try {
@@ -437,42 +470,6 @@ class PartyQuizApp extends Homey.App {
   }
 
   // =========================================================================
-  // WIDGET & API BRIDGE METHODS
-  // =========================================================================
-  getWidgetStatus(req = null) {
-    const pub = this.quizEngine.getPublicState();
-    const origin = this.resolvePublicOrigin(req);
-    return {
-      phase: pub.phase,
-      quizId: pub.quizId,
-      quizName: pub.quizTitle,
-      currentQuestionIndex: pub.currentQuestionIndex,
-      totalQuestions: pub.totalQuestions,
-      remainingSeconds: pub.remainingSeconds,
-      playerCount: pub.totalPlayers,
-      top3: pub.top3,
-      hostUrl: `${origin}/host`,
-      playUrl: `${origin}/play`
-    };
-  }
-
-  advanceQuizFromWidget() {
-    this.quizEngine.nextStep();
-    return this.getWidgetStatus();
-  }
-
-  startQuizFromWidget(quizId = null) {
-    const quiz =
-      (quizId && this.quizzes.find(q => q.id === quizId)) ||
-      this.quizEngine.activeQuiz ||
-      this.quizzes[0];
-    if (quiz) {
-      this.quizEngine.startQuiz(quiz, true);
-    }
-    return this.getWidgetStatus();
-  }
-
-  // =========================================================================
   // EXPRESS & SOCKET.IO REALTIME SERVER
   // =========================================================================
   async _startWebServer({ host = '0.0.0.0', port = this.serverConfig.serverPort || 3456 } = {}) {
@@ -482,9 +479,10 @@ class PartyQuizApp extends Homey.App {
       allowRequest: (req, callback) => callback(null, this._sameOrigin(req))
     });
 
+    const uploadLimit = 10 * 1024 * 1024;
     const upload = multer({
       storage: multer.memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 }
+      limits: { fileSize: uploadLimit }
     });
 
     this.expressApp.use(express.json({ limit: '5mb' }));
@@ -526,7 +524,7 @@ class PartyQuizApp extends Homey.App {
     });
     this.expressApp.use((req, res, next) => {
       const requestPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
-      const publicApi = (req.method === 'GET' && ['/api/state', '/api/qr', '/api/vapid-public-key', '/api/widget/status'].includes(requestPath)) ||
+      const publicApi = (req.method === 'GET' && ['/api/state', '/api/qr', '/api/vapid-public-key'].includes(requestPath)) ||
         (req.method === 'POST' && ['/api/push/subscribe', '/api/push/player-test', '/api/player/reset'].includes(requestPath));
       const adminPage = /^\/(admin|host|settings)(\/|$)/.test(requestPath);
       if ((requestPath.startsWith('/api/') && !publicApi) || adminPage) {
@@ -551,13 +549,12 @@ class PartyQuizApp extends Homey.App {
       res.sendFile(path.join(__dirname, 'public', 'admin-navigation.js'));
     });
 
-    // Pretty URLs: /host, /play, /admin, /settings, /widget -> map naar index.html
+    // Pretty URLs map to their index.html
     const uiIndexRoutes = {
       '/host': path.join('public', 'host', 'index.html'),
       '/play': path.join('public', 'play', 'index.html'),
       '/admin': path.join('public', 'admin', 'index.html'),
-      '/settings': path.join('settings', 'index.html'),
-      '/widget': path.join('widgets', 'quiz-status', 'public', 'index.html')
+      '/settings': path.join('settings', 'index.html')
     };
     for (const [route, file] of Object.entries(uiIndexRoutes)) {
       this.expressApp.get(route, (req, res) => res.sendFile(path.join(__dirname, file)));
@@ -569,10 +566,6 @@ class PartyQuizApp extends Homey.App {
     this.expressApp.use('/host', express.static(path.join(__dirname, 'public', 'host')));
     this.expressApp.use('/play', express.static(path.join(__dirname, 'public', 'play')));
     this.expressApp.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
-    this.expressApp.use(
-      '/widget',
-      express.static(path.join(__dirname, 'widgets', 'quiz-status', 'public'))
-    );
     this.expressApp.use('/settings', express.static(path.join(__dirname, 'settings')));
 
     // API: Live State & QR Code
@@ -682,15 +675,6 @@ class PartyQuizApp extends Homey.App {
       }
     });
 
-    // API: Widget endpoints
-    this.expressApp.get('/api/widget/status', (req, res) => {
-      res.json(this.getWidgetStatus(req));
-    });
-
-    this.expressApp.post('/api/widget/next', (req, res) => {
-      res.json(this.advanceQuizFromWidget());
-    });
-
     // API: Quizzes CRUD
     this.expressApp.get('/api/quizzes', (req, res) => {
       res.json({
@@ -738,6 +722,56 @@ class PartyQuizApp extends Homey.App {
         }
       }
       res.json({ success: true, quizzes: this.quizzes });
+    });
+
+    // API: Quiz backups
+    this.expressApp.get('/api/backup', (req, res) => {
+      if (!this.quizzes.every(FileImporter.isValidBackupQuiz)) {
+        return res.status(422).json({ error: 'Een quiz bevat ongeldige gegevens. Controleer en bewaar de quiz opnieuw voordat je een back-up maakt.' });
+      }
+      const backup = JSON.stringify({ format: 'party-quiz-backup', version: 1, quizzes: this.quizzes }, null, 2);
+      if (Buffer.byteLength(backup, 'utf8') > uploadLimit) {
+        return res.status(413).json({ error: 'De back-up is groter dan 10 MB en kan niet worden teruggezet.' });
+      }
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="party-quiz-backup.json"');
+      res.send(backup);
+    });
+
+    this.expressApp.post('/api/backup/restore', (req, res, next) => {
+      upload.single('file')(req, res, err => {
+        if (err) return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: err.message });
+        next();
+      });
+    }, (req, res) => {
+      if (!req.file) return res.status(400).json({ error: 'Geen back-upbestand geüpload.' });
+      let backup;
+      try {
+        backup = JSON.parse(req.file.buffer.toString('utf8'));
+      } catch (err) {
+        return res.status(400).json({ error: 'Het back-upbestand bevat geen geldige JSON.' });
+      }
+      if (!backup || backup.format !== 'party-quiz-backup' || backup.version !== 1 || !Array.isArray(backup.quizzes)) {
+        return res.status(400).json({ error: 'Ongeldig of niet-ondersteund Party Quiz back-upbestand.' });
+      }
+      if (!backup.quizzes.every(FileImporter.isValidBackupQuiz)) {
+        return res.status(400).json({ error: 'De back-up bevat ongeldige quizgegevens.' });
+      }
+      const copies = backup.quizzes.map(quiz => ({
+        ...quiz,
+        id: `quiz_${crypto.randomUUID()}`,
+        questions: quiz.questions.map(question => ({ ...question, id: `q_${crypto.randomUUID()}` }))
+      }));
+      try {
+        if (copies.length) {
+          this._saveQuizzes([...this.quizzes, ...copies], { requireFile: true });
+          if (!this.quizEngine.activeQuiz) this.quizEngine.selectQuizForLobby(copies[0]);
+        }
+        res.json({ success: true, imported: copies.length, quizzes: copies });
+      } catch (err) {
+        this.log('[Backup] Terugzetten mislukt:', err.message);
+        res.status(500).json({ error: 'De back-up kon niet worden opgeslagen. Controleer de opslag en probeer opnieuw.' });
+      }
     });
 
     // API: File Import (.xlsx, .csv, .json) & Sample downloads
@@ -932,7 +966,6 @@ class PartyQuizApp extends Homey.App {
         this.log(`   📺 Host / TV scherm : http://${this.getDetectedLanIp()}:${port}/host`);
         this.log(`   📱 Spelersscherm    : http://${this.getDetectedLanIp()}:${port}/play`);
         this.log(`   ⚙️  Beheer & Editor  : http://${this.getDetectedLanIp()}:${port}/admin`);
-        this.log(`   📊 Dashboard Widget : http://${this.getDetectedLanIp()}:${port}/widget`);
         resolve();
       });
     });

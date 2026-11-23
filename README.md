@@ -3,7 +3,7 @@
 Een complete, productieklare **Kahoot-stijl groepsquiz** als Homey-app (SDK v3), geoptimaliseerd voor
 **Homey Self-Hosted Server (SHS)** op Proxmox / Linux / Docker / Synology.
 
-Vier interfaces, realtime Socket.io, Web Push (VAPID), een officiële Dashboard Widget en
+Vier interfaces, realtime Socket.io, Web Push (VAPID) en
 24 Homey Flow-kaarten (11 ALS · 8 EN · 5 DAN).
 
 ---
@@ -52,11 +52,6 @@ homey-party-quiz/
 │   ├── QuizEngine.js                 # State machine, puntentelling, ranking, Flow-triggers
 │   ├── PushManager.js                # VAPID-keys in Homey.settings + Web Push verzenden
 │   └── FileImporter.js               # .xlsx / .csv / .json parser + voorbeeldgeneratoren
-├── widgets/quiz-status/              # Officiële Homey Dashboard Widget
-│   ├── widget.compose.json
-│   ├── api.js
-│   ├── preview-{light,dark}.png      # Widgetvoorvertoningen voor Homey
-│   └── public/{index.html,icon.svg}
 ├── public/
 │   ├── index.html                    # Overzicht / hub
 │   ├── sw.js                         # Service Worker (Web Push)
@@ -67,7 +62,7 @@ homey-party-quiz/
 ├── settings/index.html               # Homey App Settings-pagina
 ├── userdata/quizzes.json             # Startquizzen (NL)
 ├── locales/{nl,en}.json
-├── scripts/build-manifest.js         # .homeycompose + widgets → app.json
+├── scripts/build-manifest.js         # .homeycompose → app.json
 └── scripts/e2e-test.js               # end-to-end integratietests
 ```
 
@@ -99,7 +94,6 @@ na de eerste start uit de omgeving; wijzig het wachtwoord daarna via `/settings`
 | `http://<ip>:3456/play` | Spelersscherm (mobiel) |
 | `http://<ip>:3456/admin` | Beheer & quiz-editor |
 | `http://<ip>:3456/settings` | App-instellingen |
-| `http://<ip>:3456/widget` | Dashboard widget (browserpreview) |
 
 > 💡 Klik op `/host` op **🤖 +4 Demo Spelers** en daarna **🤖 Laat Demo-Spelers Antwoorden**
 > om direct het volledige spel, het podium en alle Flow-triggers te zien zonder telefoons.
@@ -107,8 +101,6 @@ na de eerste start uit de omgeving; wijzig het wachtwoord daarna via `/settings`
 ---
 
 ## 3. Installatie op Homey Self-Hosted Server (SHS)
-
-De widget vereist Homey softwareversie 12.3.0 of hoger.
 
 ```bash
 # 1. Homey CLI (eenmalig)
@@ -120,7 +112,7 @@ homey login
 # 3. In de app-map
 cd homey-party-quiz
 npm install
-npm run build:manifest      # genereert app.json uit .homeycompose + widgets
+npm run build:manifest      # genereert app.json uit .homeycompose
 
 # 4a. Draaien in dev-modus (live logs, ideaal voor SHS)
 homey app run --remote
@@ -265,9 +257,10 @@ en `/play` (teller + decaying gauge).
 - Volledige **CRUD** quizeditor: quiz aanmaken/verwijderen, vragen toevoegen/verwijderen/herordenen.
 - Per vraag: vraagtekst, tijdslimiet (5–90s), punten, 4 opties en het juiste antwoord.
 - **Import** van `.xlsx`, `.csv` en `.json` met downloadbare voorbeeldbestanden per formaat.
+- **Back-up:** download alle opgeslagen quizzen als JSON en zet ze terug als nieuwe kopieën.
+  Niet-opgeslagen wijzigingen, spelers, scores en instellingen zitten niet in de back-up.
+  Back-upbestanden mogen maximaal 10 MB groot zijn.
 - Instellingen voor publieke HTTPS-URL, VAPID-subject, VAPID-keys regenereren, testpush.
-- “Test Homey Flow”-paneel: DAN-acties uitvoeren en EN-condities live evalueren.
-- Live logboek van alle ALS-triggers met hun tokens.
 
 ---
 
@@ -309,22 +302,7 @@ onwaar. Kies een speler of gebruik een spelergebonden ALS-kaart als trigger-cont
 
 ---
 
-## 8. Dashboard Widget
-
-`widgets/quiz-status` toont live: vraagnummer (bijv. 3/5), aantal spelers, de Top 3 met scores en
-rangverschil en een knop **📺 Open hostscherm**. Spelbediening verloopt via het
-beveiligde hostscherm, niet rechtstreeks vanuit de widget.
-Bij een verbindingsfout toont de widget een foutmelding in plaats van een lege spelerslijst.
-
-API (`widget.compose.json`):
-
-| Functie | Methode | Pad |
-| --- | --- | --- |
-| `getStatus` | GET | `/` |
-
----
-
-## 9. API-overzicht (webserver)
+## 8. API-overzicht (webserver)
 
 ```
 GET  /api/state                       live gamestate + quizzen + URL's
@@ -340,26 +318,27 @@ GET  /api/quizzes                     alle quizzen
 POST /api/quizzes                     quiz opslaan (nieuw of bestaand)
 DELETE /api/quizzes/:id               quiz verwijderen
 POST /api/import                      .xlsx/.csv/.json upload (multipart)
+GET  /api/backup                      back-up van alle opgeslagen quizzen
+POST /api/backup/restore              back-up terugzetten als nieuwe kopieën
 GET  /api/samples/{xlsx|csv|json}     voorbeeldbestand downloaden
 GET  /api/settings  ·  POST /api/settings · POST /api/settings/password
 POST /api/control/{select-quiz|start|next|bonus}
 POST /api/flow/evaluate-condition      EN-conditie testen
 GET  /api/flow/history                 beheerderslogboek
-GET  /api/widget/status · POST /api/widget/next
 ```
 
 Socket.io-events: `quiz_state`, `timer_tick`, `flow_event`, `push_notification`,
 `player_join`, `submit_answer`, `host_start_quiz`, `host_next_step`, `host_select_quiz`,
 `host_kick_player`, `host_clear_players`, `player_removed`, `player_reset`, `player_session_ended`.
 
-Alleen status, QR, de publieke VAPID-sleutel, widgetstatus en de spelers-API's voor
+Alleen status, QR, de publieke VAPID-sleutel en de spelers-API's voor
 push en sessiebeëindiging zijn publiek. Overige web-API's en host-events vereisen een beheerderssessie.
 Pushregistratie en de eigen testpush vereisen het spelergeheim; registratie accepteert uitsluitend ondersteunde
 HTTPS-pushproviders. De Homey-beheer-API verwacht `adminPassword` in de POST-body.
 
 ---
 
-## 10. Opslag
+## 9. Opslag
 
 | Data | Locatie |
 | --- | --- |
@@ -375,7 +354,7 @@ startquizzen en kan tijdens lokaal gebruik worden aangepast; controleer wijzigin
 
 ---
 
-## 11. Tests
+## 10. Tests
 
 ```bash
 node --test scripts/player-sound-test.js scripts/security-test.js scripts/settings-test.js scripts/quiz-engine-test.js

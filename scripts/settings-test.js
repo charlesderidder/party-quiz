@@ -241,52 +241,15 @@ test('navigation is only shown for an admin session and marks the current page',
   assert.equal((await render(false)).body.length, 0);
   const { body, redirects } = await render(true);
   const [nav] = body;
-  assert.deepEqual(nav.children.slice(0, 6).map(link => link.href),
-    ['/', '/play', '/host', '/admin', '/settings', '/widget']);
+  assert.deepEqual(nav.children.slice(0, 5).map(link => link.href),
+    ['/', '/play', '/host', '/admin', '/settings']);
   assert.equal(nav.children.find(link => link.href === '/settings').attributes['aria-current'], 'page');
-  assert.equal(nav.children[6].textContent, 'Afmelden');
-  await nav.children[6].click();
+  assert.equal(nav.children[5].textContent, 'Afmelden');
+  await nav.children[5].click();
   assert.deepEqual(redirects, ['/']);
   const failed = await render(true, true);
-  await failed.body[0].children[6].click();
-  assert.equal(failed.body[0].children[7].hidden, false);
-  assert.match(failed.body[0].children[7].textContent, /mislukt/);
+  await failed.body[0].children[5].click();
+  assert.equal(failed.body[0].children[6].hidden, false);
+  assert.match(failed.body[0].children[6].textContent, /mislukt/);
   assert.deepEqual(failed.redirects, []);
-});
-
-test('widget reports connection failures and recovers with actual Homey status', async () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'widgets', 'quiz-status', 'public', 'index.html'), 'utf8');
-  const source = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
-  const elements = new Map();
-  const intervals = [];
-  function element(id) {
-    if (!elements.has(id)) elements.set(id, {
-      style: {}, textContent: '', innerHTML: '', addEventListener() {}
-    });
-    return elements.get(id);
-  }
-  const context = {
-    document: { getElementById: element },
-    window: { addEventListener() {} },
-    setInterval: fn => { intervals.push(fn); return intervals.length; },
-    clearInterval() {},
-    console: { error() {} }
-  };
-  vm.runInNewContext(source, context);
-  let fails = true;
-  const homey = {
-    getSettings: () => ({}), ready() {},
-    api: async () => {
-      if (fails) throw new Error('offline');
-      return { quizName: 'Quiz', phase: 'lobby', playerCount: 1, top3: [{ name: 'Sanne', score: 100 }] };
-    }
-  };
-  context.onHomeyReady(homey);
-  await flush();
-  assert.match(element('top3Container').textContent, /niet beschikbaar/);
-  assert.equal(element('playerCountBadge').textContent, '👥 —');
-  fails = false;
-  await intervals[0]();
-  assert.match(element('top3Container').innerHTML, /Sanne/);
-  assert.equal(element('playerCountBadge').textContent, '👥 1');
 });

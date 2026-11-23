@@ -62,7 +62,7 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const target = btn.dataset.tab;
-      ['tabEditor', 'tabImport', 'tabSettings', 'tabFlows'].forEach(id => {
+      ['tabEditor', 'tabImport', 'tabSettings'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = id === target ? (id === 'tabEditor' ? 'grid' : 'flex') : 'none';
       });
@@ -387,6 +387,50 @@
     }
   });
 
+  document.getElementById('btnExportBackup').addEventListener('click', async () => {
+    try {
+      const response = await fetch('/api/backup', { cache: 'no-store' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'party-quiz-backup.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      showAlert(`❌ Back-up downloaden mislukt: ${err.message}`, true);
+    }
+  });
+
+  document.getElementById('restoreBackupForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const file = document.getElementById('backupFileInput').files[0];
+    if (!file) {
+      showAlert('❌ Selecteer een back-upbestand.', true);
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const result = await api('/api/backup/restore', { method: 'POST', body: formData });
+      e.target.reset();
+      if (draftQuiz) {
+        quizzes.push(...result.quizzes);
+        renderSidebar();
+      } else {
+        await loadQuizzes();
+      }
+      showAlert(`✅ ${result.imported} quizzen als nieuwe kopieën teruggezet.`);
+    } catch (err) {
+      showAlert(`❌ Back-up terugzetten mislukt: ${err.message}`, true);
+    }
+  });
+
   // =========================================================================
   // SETTINGS, HTTPS & VAPID
   // =========================================================================
@@ -450,124 +494,6 @@
     }
   });
 
-  // =========================================================================
-  // FLOW STUDIO TESTER
-  // =========================================================================
-  function findPlayerIdByName(name) {
-    const q = String(name || '').toLowerCase().trim();
-    if (!q || !latestState) return null;
-    const found = (latestState.leaderboard || []).find(
-      p => p.name.toLowerCase() === q || p.name.toLowerCase().includes(q)
-    );
-    return found ? found.id : null;
-  }
-
-  document.getElementById('btnRunBonusFlow').addEventListener('click', async () => {
-    const name = document.getElementById('flowBonusPlayer').value;
-    const points = Number(document.getElementById('flowBonusPoints').value) || 0;
-    const playerId = findPlayerIdByName(name);
-    if (!playerId) {
-      showAlert('❌ Speler niet gevonden. Voeg eerst spelers toe via /host.', true);
-      return;
-    }
-    try {
-      await api('/api/control/bonus', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, points })
-      });
-      showAlert(`🎁 ${points} bonuspunten aan ${name} gegeven.`);
-    } catch (err) {
-      showAlert(`❌ ${err.message}`, true);
-    }
-  });
-
-  document.getElementById('btnRunPushAllFlow').addEventListener('click', async () => {
-    const text = document.getElementById('flowPushAllText').value.trim();
-    try {
-      await api('/api/push/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
-      });
-      showAlert('🔔 DAN-actie send_push_all uitgevoerd.');
-    } catch (err) {
-      showAlert(`❌ ${err.message}`, true);
-    }
-  });
-
-  document.getElementById('btnEvalCondition').addEventListener('click', async () => {
-    const conditionId = document.getElementById('flowConditionSelect').value;
-    const name = document.getElementById('flowConditionPlayer').value;
-    const playerId = findPlayerIdByName(name);
-    const resultEl = document.getElementById('flowConditionResult');
-    if (!playerId) {
-      resultEl.textContent = '❌ Speler niet gevonden in de actieve quiz.';
-      resultEl.style.color = 'var(--homey-rose)';
-      return;
-    }
-    try {
-      const res = await api('/api/flow/evaluate-condition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conditionId, playerId })
-      });
-      resultEl.textContent = res.result
-        ? `✅ EN-kaart "${conditionId}" is WAAR voor ${name}`
-        : `❌ EN-kaart "${conditionId}" is ONWAAR voor ${name}`;
-      resultEl.style.color = res.result ? 'var(--homey-green)' : 'var(--homey-rose)';
-    } catch (err) {
-      resultEl.textContent = `❌ ${err.message}`;
-      resultEl.style.color = 'var(--homey-rose)';
-    }
-  });
-
-  // =========================================================================
-  // LIVE TRIGGER LOG
-  // =========================================================================
-  const TRIGGER_LABELS = {
-    quiz_started: '🚀 quiz_started',
-    quiz_finished: '🏁 quiz_finished',
-    question_asked: '❓ question_asked',
-    question_time_up: '⏰ question_time_up',
-    player_answered_correct: '✅ player_answered_correct',
-    player_answered_wrong: '❌ player_answered_wrong',
-    player_rank_up: '📈 player_rank_up',
-    player_entered_top3: '🏆 player_entered_top3',
-    player_left_top3: '📉 player_left_top3',
-    player_is_first: '🥇 player_is_first',
-    player_won: '👑 player_won'
-  };
-
-  function renderFlowEvent(entry) {
-    if (!entry) return;
-    const list = document.getElementById('flowEventsList');
-    const tokensHtml = Object.entries(entry.tokens || {})
-      .map(
-        ([k, v]) =>
-          `<span class="glass-pill" style="font-size:11px;padding:3px 9px;">[${escapeHtml(
-            k
-          )}: ${escapeHtml(v)}]</span>`
-      )
-      .join(' ');
-
-    const item = document.createElement('div');
-    item.className = 'flow-log-item';
-    item.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <strong>${escapeHtml(TRIGGER_LABELS[entry.triggerId] || entry.triggerId)}</strong>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">${tokensHtml}</div>
-      </div>
-      <span style="font-size:11px;color:var(--text-muted);">${new Date(
-        entry.timestamp || Date.now()
-      ).toLocaleTimeString('nl-NL')}</span>
-    `;
-    list.prepend(item);
-    while (list.children.length > 40) list.removeChild(list.lastChild);
-  }
-
-  socket.on('flow_event', renderFlowEvent);
-
   socket.on('quiz_state', state => {
     latestState = state;
     if (state) {
@@ -587,11 +513,5 @@
     }
     await loadQuizzes();
     await loadSettings();
-    try {
-      const { flowHistory } = await api('/api/flow/history');
-      flowHistory.reverse().forEach(renderFlowEvent);
-    } catch (err) {
-      showAlert(`❌ Flow-logboek laden mislukt: ${err.message}`, true);
-    }
   })();
 })();

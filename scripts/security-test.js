@@ -1,6 +1,9 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const test = require('node:test');
 const { io } = require('socket.io-client');
 const PartyQuizApp = require('../app');
@@ -8,6 +11,110 @@ const QuizEngine = require('../lib/QuizEngine');
 const PushManager = require('../lib/PushManager');
 const AdminSecurity = require('../lib/AdminSecurity');
 const homeyApi = require('../api');
+
+test('quiz backup is private and restores complete quizzes as independent copies', async t => {
+  const values = {};
+  const settings = { get: key => values[key], set: (key, value) => { values[key] = value; } };
+  const app = new PartyQuizApp();
+  app.homey = { settings };
+  app.log = () => {};
+  app.adminSecurity = new AdminSecurity(settings);
+  app.adminSecurity.setPassword('initial-password');
+  app.playerSecrets = new Map();
+  app.removedPlayerIds = new Set();
+  app.playerPushTests = new Map();
+  app.serverConfig = { serverPort: 0 };
+  app.quizzes = [
+    { id: 'one', title: 'Eerste', description: 'Beschrijving', questions: [
+      { id: 'q1', question: 'Vraag?', options: ['A', 'B', 'C', 'D'], correctIndex: 2, timeLimit: 15, points: 500 }
+    ] },
+    { id: 'two', title: 'Tweede', questions: [
+      { id: 'q2', question: 'Andere vraag?', options: ['1', '2', '3', '4'], correctIndex: 0, timeLimit: 20, points: 1000 }
+    ] }
+  ];
+  app.quizEngine = new QuizEngine({});
+  app.quizEngine.selectQuizForLobby(app.quizzes[0]);
+  app.pushManager = { getPublicKey: () => 'key', subscriptions: new Map() };
+  let saveFails = false;
+  app._saveQuizzes = (quizzes, options) => {
+    assert.equal(options.requireFile, true);
+    if (saveFails) throw new Error('Storage unavailable');
+    app.quizzes = quizzes;
+  };
+  await app._startWebServer({ host: '127.0.0.1', port: 0 });
+  t.after(() => app.io.close());
+  const base = `http://127.0.0.1:${app.httpServer.address().port}`;
+  const upload = (data, cookie) => {
+    const form = new FormData();
+    form.append('file', new Blob([typeof data === 'string' ? data : JSON.stringify(data)], { type: 'application/json' }), 'backup.json');
+    return fetch(base + '/api/backup/restore', { method: 'POST', headers: cookie ? { Cookie: cookie } : {}, body: form });
+  };
+  assert.equal((await fetch(base + '/api/backup')).status, 401);
+  assert.equal((await upload('{}')).status, 401);
+  const login = await fetch(base + '/api/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'initial-password' })
+  });
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  const response = await fetch(base + '/api/backup', { headers: { Cookie: cookie } });
+  assert.match(response.headers.get('content-disposition'), /attachment/);
+  const backup = await response.json();
+  assert.deepEqual(backup, { format: 'party-quiz-backup', version: 1, quizzes: app.quizzes });
+  const originals = JSON.parse(JSON.stringify(app.quizzes));
+  app.quizzes = [...originals, { title: 'Ongeldig', questions: [{}] }];
+  assert.equal((await fetch(base + '/api/backup', { headers: { Cookie: cookie } })).status, 422);
+  app.quizzes = originals;
+  assert.equal((await upload('{', cookie)).status, 400);
+  assert.equal((await upload({ ...backup, version: 2 }, cookie)).status, 400);
+  assert.equal((await upload({ ...backup, quizzes: [backup.quizzes[0], { title: 'Ongeldig', questions: [{}] }] }, cookie)).status, 400);
+  assert.deepEqual(app.quizzes, originals);
+  saveFails = true;
+  assert.equal((await upload(backup, cookie)).status, 500);
+  assert.deepEqual(app.quizzes, originals);
+  saveFails = false;
+  const restored = await (await upload(backup, cookie)).json();
+  assert.equal(restored.imported, 2);
+  assert.equal(app.quizzes.length, 4);
+  assert.deepEqual(app.quizzes.slice(0, 2), originals);
+  for (let i = 0; i < originals.length; i++) {
+    const copy = restored.quizzes[i];
+    assert.notEqual(copy.id, originals[i].id);
+    assert.notEqual(copy.questions[0].id, originals[i].questions[0].id);
+    assert.deepEqual({ ...copy, id: originals[i].id, questions: copy.questions.map((q, idx) => ({ ...q, id: originals[i].questions[idx].id })) }, originals[i]);
+  }
+  const again = await (await upload(backup, cookie)).json();
+  assert.notEqual(again.quizzes[0].id, restored.quizzes[0].id);
+  assert.equal(app.quizEngine.phase, 'lobby');
+});
+
+test('backup restoration persists safely and reports storage failures', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'party-quiz-backup-test-'));
+  const file = path.join(dir, 'quizzes.json');
+  t.after(() => { fs.unlinkSync(file); fs.rmdirSync(dir); });
+  const old = [{ id: 'old' }];
+  const next = [{ id: 'new' }];
+  fs.writeFileSync(file, JSON.stringify(old));
+  let saved = old;
+  let fail = false;
+  const app = new PartyQuizApp();
+  app.quizzesFilePath = file;
+  app.quizzes = old;
+  app.log = () => {};
+  app.homey = { settings: { set(key, value) {
+    if (fail) { fail = false; throw new Error('Storage unavailable'); }
+    saved = value;
+  } } };
+  fail = true;
+  assert.throws(() => app._saveQuizzes(next, { requireFile: true }), /Storage unavailable/);
+  assert.deepEqual(app.quizzes, old);
+  assert.deepEqual(saved, old);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), old);
+  assert.deepEqual(fs.readdirSync(dir), ['quizzes.json']);
+  app._saveQuizzes(next, { requireFile: true });
+  assert.deepEqual(app.quizzes, next);
+  assert.deepEqual(saved, next);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), next);
+});
 
 test('beheer is afgeschermd voor web, sockets en Homey API', async t => {
   const values = {};
@@ -56,7 +163,7 @@ test('beheer is afgeschermd voor web, sockets en Homey API', async t => {
   for (const [path, options] of [
     ['/admin/index.html', {}], ['/settings/index.html', {}], ['/api/quizzes', {}],
     ['/api/settings', {}], ['/api/flow/history', {}], ['/api/control/start', json({})],
-    ['/api/widget/next', { method: 'POST' }], ['/api/push/test', json({})]
+    ['/api/push/test', json({})]
   ]) {
     const response = await request(path, options);
     assert.ok(response.status === 401 || response.status === 302, `${path}: ${response.status}`);
@@ -66,6 +173,13 @@ test('beheer is afgeschermd voor web, sockets en Homey API', async t => {
   const login = await request('/api/login', json({ password: 'initial-password' }));
   assert.equal(login.status, 200);
   const cookie = login.headers.get('set-cookie').split(';')[0];
+  for (const [path, options] of [
+    ['/widget', {}], ['/widget/index.html', {}], ['/api/widget/status', {}],
+    ['/api/widget/next', { method: 'POST' }]
+  ]) {
+    assert.equal((await request(path, { ...options, headers: { Cookie: cookie } })).status, 404, path);
+  }
+  assert.equal(app.quizEngine.phase, 'lobby');
   assert.equal((await (await request('/api/admin/session', { headers: { Cookie: cookie } })).json()).authenticated, true);
   assert.match(login.headers.get('set-cookie'), /HttpOnly; SameSite=Strict/);
   assert.equal((await request('/api/quizzes', { headers: { Cookie: cookie } })).status, 200);
